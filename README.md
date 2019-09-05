@@ -4,7 +4,9 @@ Currently, the package contains functionalities for obtaining the mass functions
 
 'arepo_package.py' contains all the required functions
 
-'example_codes.ipynb' is an interactive notebook which contains some example code snippets to use the functions within 'arepo_package.py'  to generate quantities and plot them.  
+'example_codes.ipynb' is an interactive notebook which contains some example code snippets to use the functions within 'arepo_package.py'  to generate quantities and plot them. 
+
+Paths within 'example_codes.ipynb' need to be changed depending on the system.
 
 
 
