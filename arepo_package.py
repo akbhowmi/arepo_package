@@ -206,6 +206,28 @@ def get_dark_matter_correlation_function(output_path,input_redshift,NBINS, RMIN,
     return r,DD,RR,xi,output_redshift
 
 
+def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all)
+    if (list_all):
+        print('Below are the list of properties for ptype ',p_type)
+        print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
+    
+    requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
+
+    if (group_type=='groups'):              
+        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift))
+        group_lengths=group_lengths[:,p_type] 
+        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
+    elif (group_type=='subhalo'):              
+        group_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift))
+        group_lengths=group_lengths[:,p_type] 
+        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
+    else:
+        "Error:Unidentified group type"                      
+    return requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]],output_redshift
+
+
+
 
 
 
