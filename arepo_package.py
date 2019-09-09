@@ -11,6 +11,7 @@ import illustris_python as il
 import os
 from kdcount import correlate
 import scipy
+import matplotlib as mpl
 
 def get_snapshot_redshift_correspondence(output_path):
     output_file_names=os.listdir(output_path)
@@ -37,7 +38,7 @@ def get_box_size(output_path):
             snapshot_number=int(name[7:])
             header=il.groupcat.loadHeader(output_path,snapshot_number)
             box_size=header.get('BoxSize')   
-            return box_size/1000.
+            return box_size
         
         
         
@@ -223,8 +224,96 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
         group_lengths=group_lengths[:,p_type] 
         group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
     else:
-        "Error:Unidentified group type"                      
+        print("Error:Unidentified group type")
+        return
     return requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]],output_redshift
+
+def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
+
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)
+    requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
+    requested_property_parent_group=il.snapshot.loadSubset(output_path,output_snapshot,1)[particle_property]
+    
+
+    if (group_type=='groups'):              
+        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift))
+        group_lengths=group_lengths[:,p_type] 
+        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])                   
+        group_particles=requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]]
+        return group_particles,output_redshift
+    elif (group_type=='subhalo'):              
+
+        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift))
+        group_lengths=group_lengths[:,1] 
+        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
+        
+        subhalo_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift))
+        subhalo_lengths=subhalo_lengths[:,p_type] 
+        subhalo_indices=numpy.arange(0,len(subhalo_lengths))
+        
+        
+        subhalo_group_number,output_redshift=(get_subhalo_property(output_path,'SubhaloGrNr', desired_redshift));
+        desired_group_number=subhalo_group_number[subhalo_index]  
+        subhalo_lengths=subhalo_lengths[subhalo_group_number==desired_group_number]
+        subhalo_offsets=numpy.array([sum(subhalo_lengths[0:i]) for i in range(0,len(subhalo_lengths))])
+        
+        mask=subhalo_group_number==desired_group_number
+        #print(len(mask)),mask
+        subhalo_indices=subhalo_indices[mask]  
+        subhalo_final_indices=numpy.arange(0,len(subhalo_indices))
+        group_particles=requested_property_parent_group[group_offsets[desired_group_number]:group_offsets[desired_group_number]+group_lengths[desired_group_number]]   
+
+        #subhalo_indices=subhalo_indices[subhalo_group_number==desired_group_number]
+        final_index=(subhalo_final_indices[subhalo_indices==subhalo_index])[0]
+        
+        subhalo_particles=group_particles[subhalo_offsets[final_index]:subhalo_offsets[final_index]+subhalo_lengths[final_index]]
+      
+        return subhalo_particles,group_particles,output_redshift     
+    else:
+        print("Error:Unidentified group type")
+        
+        
+def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,colormap='Blues_r',opacity=1):
+    x_pos=Coordinates[:,0]
+    y_pos=Coordinates[:,1]
+    z_pos=Coordinates[:,2]
+
+    x_pos_COM=Coordinates_for_COM[:,0]
+    y_pos_COM=Coordinates_for_COM[:,1]
+    z_pos_COM=Coordinates_for_COM[:,2]
+    
+    #if (CENTER_OF_MASS):   
+    COM_x=numpy.median(x_pos_COM)
+    COM_y=numpy.median(y_pos_COM)
+    COM_z=numpy.median(z_pos_COM)
+
+    def min_dis(median_position, position,box_size):
+        pos_1=position-median_position
+        pos_2=position-median_position+boxsize
+        pos_3=position-median_position-boxsize
+
+        new_position_options=numpy.array([pos_1,pos_2,pos_3])
+        get_minimum_distance=numpy.argmin(numpy.abs(new_position_options))
+        #print(new_position_options)
+
+        #print(get_minimum_distance)
+        return new_position_options[get_minimum_distance]
+
+    vectorized_min_dis = numpy.vectorize(min_dis)
+    x_pos_wrapped=vectorized_min_dis(COM_x,x_pos,boxsize)
+    y_pos_wrapped=vectorized_min_dis(COM_y,y_pos,boxsize)
+    z_pos_wrapped=vectorized_min_dis(COM_z,z_pos,boxsize)
+
+    plane='xz'
+
+
+    if (plane=='xy'):
+        obj.hist2d(x_pos_wrapped,y_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
+    if (plane=='yz'):
+        obj.hist2d(y_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
+    if (plane=='xz'):
+        obj.hist2d(x_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
+
 
 
 
