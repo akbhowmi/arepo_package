@@ -314,6 +314,57 @@ def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,colormap=
     if (plane=='xz'):
         obj.hist2d(x_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
 
+        
+def get_merger_events(output_path):
+
+    output_file_names=os.listdir(output_path+'blackhole_mergers/')
+    snapshot_space=[]
+    redshift_space=[]
+
+    file_id_complete=numpy.array([],dtype=int)
+    scale_fac_complete=numpy.array([])
+
+    BH_id1_complete=numpy.array([],dtype=int)
+    BH_mass1_complete=numpy.array([])
+    BH_id2_complete=numpy.array([],dtype=int)
+    BH_mass2_complete=numpy.array([])
+
+
+
+    for name in output_file_names[:]:
+        data=numpy.loadtxt(output_path+'blackhole_mergers/'+name)
+        #data=numpy.transpose(data)
+        file_id=data[:,0].astype(int)
+        scale_fac=data[:,1]
+
+        BH_id1=data[:,2].astype(int)
+        BH_mass1=data[:,3]
+        BH_id2=data[:,4].astype(int)
+        BH_mass2=data[:,5]
+
+        file_id_complete=numpy.append(file_id_complete,file_id)
+        scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+        BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
+        BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
+        BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
+        BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2) 
+    mass_tuple=list(zip(BH_mass1_complete,BH_mass2_complete))
+    id_tuple=list(zip(BH_id1_complete,BH_id2_complete))
+
+    #primary_mass=numpy.array([numpy.amax([dat[0],dat[1]]) for dat in mass_tuple])
+    #secondary_mass=numpy.array([numpy.amin([dat[0],dat[1]]) for dat in mass_tuple])
+
+    primary_index=numpy.array([numpy.argmax([dat[0],dat[1]]) for dat in mass_tuple])
+    secondary_index=numpy.array([numpy.argmin([dat[0],dat[1]]) for dat in mass_tuple])
+
+    primary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,primary_index))])
+    secondary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,secondary_index))])
+
+    primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
+    secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
+    return scale_fac_complete,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete
+
+
 
 
 
