@@ -364,6 +364,162 @@ def get_merger_events(output_path):
     secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
     return scale_fac_complete,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete
 
+def get_blackhole_history_high_res(output_path,desired_id):
+    def parse_id_col(BH_ids_as_string):
+        return numpy.int(BH_ids_as_string[3:])
+    vec_parse_id_col=numpy.vectorize(parse_id_col)
+    
+    output_file_names=os.listdir(output_path+'blackhole_details/')
+
+    BH_ids_for_id=numpy.array([],dtype=int)
+    scale_factors_for_id=numpy.array([])
+    BH_masses_for_id=numpy.array([])
+    BH_mdots_for_id=numpy.array([])
+    rhos_for_id=numpy.array([])
+    sound_speeds_for_id=numpy.array([])
+    
+    
+    merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete=get_merger_events(output_path)
+    extract_events_as_secondary_BH=secondary_id==desired_id
+    extract_events_as_primary_BH=primary_id==desired_id
+    merging_partner_ids=numpy.append(primary_id[extract_events_as_secondary_BH],secondary_id[extract_events_as_primary_BH])    
+    merging_times=numpy.append(merging_time[extract_events_as_secondary_BH],merging_time[extract_events_as_primary_BH])    
+
+    total_desired_ids=numpy.append(numpy.array([desired_id]),merging_partner_ids)
+    
+    for output_file_name in output_file_names[:]:
+        if ('blackhole_details' in output_file_name):
+            full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
+            BH_ids=vec_parse_id_col(full_data[:,0])
+            scale_factors=(full_data[:,1]).astype('float')
+            BH_masses=(full_data[:,2]).astype('float')
+            BH_mdots=(full_data[:,3]).astype('float')
+            rhos=(full_data[:,3]).astype('float')
+            sound_speeds=(full_data[:,3]).astype('float')
+
+            final_extract=numpy.array([False]*len(sound_speeds))
+            for d_id in total_desired_ids:
+                extract_id=(d_id==BH_ids)
+                final_extract=final_extract+extract_id
+            #print(len(BH_ids),len(BH_ids[extract_id]))
+            BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
+            scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
+            BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
+            BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
+            rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
+            sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
+            
+    return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
+
+
+def get_blackhole_history_high_res_all_progenitors(output_path,desired_id):
+    def parse_id_col(BH_ids_as_string):
+        return numpy.int(BH_ids_as_string[3:])
+    vec_parse_id_col=numpy.vectorize(parse_id_col)
+    
+    output_file_names=os.listdir(output_path+'blackhole_details/')
+
+    BH_ids_for_id=numpy.array([],dtype=int)
+    scale_factors_for_id=numpy.array([])
+    BH_masses_for_id=numpy.array([])
+    BH_mdots_for_id=numpy.array([])
+    rhos_for_id=numpy.array([])
+    sound_speeds_for_id=numpy.array([])
+    
+  
+    total_desired_ids,merging_times=get_progenitors_and_descendants(output_path,desired_id)
+    
+    for output_file_name in output_file_names[:]:
+        if ('blackhole_details' in output_file_name):
+            full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
+            BH_ids=vec_parse_id_col(full_data[:,0])
+            scale_factors=(full_data[:,1]).astype('float')
+            BH_masses=(full_data[:,2]).astype('float')
+            BH_mdots=(full_data[:,3]).astype('float')
+            rhos=(full_data[:,3]).astype('float')
+            sound_speeds=(full_data[:,3]).astype('float')
+
+            final_extract=numpy.array([False]*len(sound_speeds))
+            for d_id in total_desired_ids:
+                extract_id=(d_id==BH_ids)
+                final_extract=final_extract+extract_id
+            #print(len(BH_ids),len(BH_ids[extract_id]))
+            BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
+            scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
+            BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
+            BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
+            rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
+            sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
+            
+    return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
+
+        
+        
+def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100):
+
+    BH_ids_for_id=numpy.array([],dtype=int)
+    scale_factors_for_id=numpy.array([])
+    BH_masses_for_id=numpy.array([])
+    BH_mdots_for_id=numpy.array([])
+    rhos_for_id=numpy.array([])
+    sound_speeds_for_id=numpy.array([])
+    merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete=get_merger_events(output_path)
+
+    progenitor_ids=numpy.array([desired_id],dtype=int)
+    final_merging_times=numpy.array([])
+    progenitor_ids_before_update=numpy.array([],dtype=int)
+    i=0
+    while (len(progenitor_ids_before_update)<len(progenitor_ids)):
+            
+        progenitor_ids_before_update=progenitor_ids+False
+        
+        extract_events_as_primary_BH=numpy.array([False]*len(secondary_id))
+        extract_events_as_secondary_BH=numpy.array([False]*len(secondary_id))
+        for ids in progenitor_ids:
+            extract_events_as_secondary_BH=extract_events_as_secondary_BH+(secondary_id==ids)
+            extract_events_as_primary_BH=extract_events_as_primary_BH+(primary_id==ids)
+        merging_partner_ids=numpy.append(primary_id[extract_events_as_secondary_BH],secondary_id[extract_events_as_primary_BH])    
+        merge_times=numpy.append(merging_time[extract_events_as_secondary_BH],merging_time[extract_events_as_primary_BH])    
+
+        progenitor_ids=numpy.append(progenitor_ids,merging_partner_ids)
+        final_merging_times=numpy.append(final_merging_times,merge_times)
+         
+        progenitor_ids_before_distinct=progenitor_ids+0
+        progenitor_ids=numpy.unique(progenitor_ids)
+        
+        #temp_merging_times=[]
+        #for prog_id in progenitor_ids:
+        #    extract_id=progenitor_ids_before_distinct==prog_id
+        #    temp=final_merging_times[extract_id]
+        #    if (len(temp)==0):
+        #        print("Warning! Merging time missing")
+        #    else:
+        #        temp_merging_times.append(temp[0])
+        final_merging_times=numpy.unique(final_merging_times)
+        i+=1
+        if (i>MAX_ITERATION):
+            print("Maximum number of iterations reached! Aborting")
+            break
+    return progenitor_ids,final_merging_times
+            
+        
+        
+        
+    
+    
+    
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 
 
