@@ -164,7 +164,7 @@ def get_particle_history(z_latest,z_earliest,z_no_of_bins,p_type,p_id_to_be_trac
     return numpy.array(prperty_history),numpy.array(z_history)
 
 def poiss(rmin,rmax,BOXSIZE):
-    p=4./3*scipy.pi*(rmax**3-rmin**3)/BOXSIZE**3
+    p=4./3*scipy.pi*(rmax**3-rmin**3)/(BOXSIZE/1e3)**3
     return p 
 
     
@@ -174,7 +174,7 @@ def correlate_info(data, NBINS, RMIN, RMAX, BOXSIZE, WRAP):
             RMAX = BOXSIZE
         
         if WRAP:
-            wrap_length = BOXSIZE
+            wrap_length = BOXSIZE/1e3
         else:
             wrap_length = None
         
@@ -329,25 +329,29 @@ def get_merger_events(output_path):
     BH_id2_complete=numpy.array([],dtype=int)
     BH_mass2_complete=numpy.array([])
 
-
+    N_empty=0
 
     for name in output_file_names[:]:
         data=numpy.loadtxt(output_path+'blackhole_mergers/'+name)
         #data=numpy.transpose(data)
-        file_id=data[:,0].astype(int)
-        scale_fac=data[:,1]
+        try:
+            file_id=data[:,0].astype(int)
+            scale_fac=data[:,1]
 
-        BH_id1=data[:,2].astype(int)
-        BH_mass1=data[:,3]
-        BH_id2=data[:,4].astype(int)
-        BH_mass2=data[:,5]
+            BH_id1=data[:,2].astype(int)
+            BH_mass1=data[:,3]
+            BH_id2=data[:,4].astype(int)
+            BH_mass2=data[:,5]
 
-        file_id_complete=numpy.append(file_id_complete,file_id)
-        scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
-        BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
-        BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
-        BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
-        BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2) 
+            file_id_complete=numpy.append(file_id_complete,file_id)
+            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+            BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
+            BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
+            BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
+            BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2) 
+        except IndexError:
+            N_empty+=1
+            aaa=1
     mass_tuple=list(zip(BH_mass1_complete,BH_mass2_complete))
     id_tuple=list(zip(BH_id1_complete,BH_id2_complete))
 
@@ -362,7 +366,7 @@ def get_merger_events(output_path):
 
     primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
     secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
-    return scale_fac_complete,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete
+    return scale_fac_complete,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty
 
 def get_blackhole_history_high_res(output_path,desired_id):
     def parse_id_col(BH_ids_as_string):
