@@ -102,10 +102,11 @@ def get_particle_property(output_path,particle_property,p_type,desired_redshift,
 
 
 def mass_function(HM,box_size,Nbins,log_HM_min,log_HM_max):
+    box_size_Mpc=box_size/1000.
     #print(HM)
     
     def extract(HM_min,HM_max):
-        mask=(HM>HM_min/1e10)&(HM<HM_max/1e10)
+        mask=(HM>HM_min)&(HM<HM_max)
         return (HM_min+HM_max)/2,len(HM[mask])
 
     HM_bin=numpy.logspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
@@ -114,8 +115,8 @@ def mass_function(HM,box_size,Nbins,log_HM_min,log_HM_max):
     centers=numpy.array(list(zip(*out))[0])
     counts=numpy.array(list(zip(*out))[1])
     dM=centers*numpy.diff(numpy.log(centers))[0]
-    HMF=counts/dM/box_size**3
-    dHMF=numpy.sqrt(counts)/dM/box_size**3
+    HMF=counts/dM/box_size_Mpc**3
+    dHMF=numpy.sqrt(counts)/dM/box_size_Mpc**3
     return centers,HMF,dHMF
 
 
@@ -125,13 +126,13 @@ def get_mass_function(category,object_type,desired_redshift,output_path,Nbins,lo
     if (object_type=='group'):
         if (category=='total'):
             mass,output_redshift=get_group_property(output_path,'GroupMass',desired_redshift,list_all=list_all)
-            centers,HMF,dHMF=mass_function(mass,box_size,Nbins,log_mass_min,log_mass_max)
+            centers,HMF,dHMF=mass_function(mass*1e10,box_size,Nbins,log_mass_min,log_mass_max)
             return centers,HMF,dHMF,output_redshift
         
     if (object_type=='subhalo'):
         if (category=='total'):
             mass,output_redshift=get_subhalo_property(output_path,'SubhaloMass',desired_redshift,list_all=list_all)
-            centers,HMF,dHMF=mass_function(mass,box_size,Nbins,log_mass_min,log_mass_max)
+            centers,HMF,dHMF=mass_function(mass*1e10,box_size,Nbins,log_mass_min,log_mass_max)
             return centers,HMF,dHMF,output_redshift
         else:
             if (category=='stellar'):
@@ -146,7 +147,7 @@ def get_mass_function(category,object_type,desired_redshift,output_path,Nbins,lo
             mass,output_redshift=get_subhalo_property(output_path,'SubhaloMassType',desired_redshift,list_all=list_all)
             #print(mass)
             
-            centers,HMF,dHMF=mass_function(mass[:,p_type],box_size,Nbins,log_mass_min,log_mass_max)
+            centers,HMF,dHMF=mass_function(mass[:,p_type]*1e10,box_size,Nbins,log_mass_min,log_mass_max)
             return centers,HMF,dHMF,output_redshift        
 
 def get_particle_history(z_latest,z_earliest,z_no_of_bins,p_type,p_id_to_be_tracked,desired_property,output_path):
