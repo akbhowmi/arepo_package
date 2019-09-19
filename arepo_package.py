@@ -120,7 +120,7 @@ def mass_function(HM,box_size,Nbins,log_HM_min,log_HM_max):
     return centers,HMF,dHMF
 
 
-def get_mass_function(category,object_type,desired_redshift,output_path,Nbins,log_mass_min,log_mass_max,list_all=True):
+def get_mass_function(category,object_type,desired_redshift,output_path,Nbins,log_mass_min,log_mass_max,list_all=True,dynamical_bh_mass=True):
     box_size=get_box_size(output_path)
       #print (box_)
     if (object_type=='group'):
@@ -144,10 +144,12 @@ def get_mass_function(category,object_type,desired_redshift,output_path,Nbins,lo
             if (category=='gas'):
                 p_type=0                
                 
-            mass,output_redshift=get_subhalo_property(output_path,'SubhaloMassType',desired_redshift,list_all=list_all)
-            #print(mass)
-            
-            centers,HMF,dHMF=mass_function(mass[:,p_type]*1e10,box_size,Nbins,log_mass_min,log_mass_max)
+            if ((p_type==5)&(dynamical_bh_mass==True)):
+                mass,output_redshift=get_subhalo_property(output_path,'SubhaloBHMass',desired_redshift,list_all=list_all) 
+            else:
+                masstype,output_redshift=get_subhalo_property(output_path,'SubhaloMassType',desired_redshift,list_all=list_all)           
+                mass=masstype[:,p_type]
+            centers,HMF,dHMF=mass_function(mass*1e10,box_size,Nbins,log_mass_min,log_mass_max)
             return centers,HMF,dHMF,output_redshift        
 
 def get_particle_history(z_latest,z_earliest,z_no_of_bins,p_type,p_id_to_be_tracked,desired_property,output_path):
