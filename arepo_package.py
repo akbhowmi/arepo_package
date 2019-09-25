@@ -76,7 +76,7 @@ def desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=Tr
     return output_redshift,output_snapshot      
         
 def get_group_property(output_path,group_property,desired_redshift,list_all=True):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
     halos = il.groupcat.loadHalos(output_path,output_snapshot,fields=None)
     if (list_all):
         print('Below are the list of properties')
@@ -84,7 +84,7 @@ def get_group_property(output_path,group_property,desired_redshift,list_all=True
     return halos.get(group_property),output_redshift
 
 def get_subhalo_property(output_path,subhalo_property,desired_redshift,list_all=True):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)      
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)      
     subhalos = il.groupcat.loadSubhalos(output_path,output_snapshot,fields=None)
     if (list_all):
         print('Below are the list of properties')
@@ -219,11 +219,11 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
     requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
 
     if (group_type=='groups'):              
-        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift))
+        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
         group_lengths=group_lengths[:,p_type] 
         group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
     elif (group_type=='subhalo'):              
-        group_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift))
+        group_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift,list_all=False))
         group_lengths=group_lengths[:,p_type] 
         group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
     else:
@@ -233,13 +233,13 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
 
 def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
 
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
     requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
-    requested_property_parent_group=il.snapshot.loadSubset(output_path,output_snapshot,1)[particle_property]
+    #requested_property_parent_group=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
     
 
     if (group_type=='groups'):              
-        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift))
+        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
         group_lengths=group_lengths[:,p_type] 
         group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])                   
         group_particles=requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]]
@@ -247,7 +247,7 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
     elif (group_type=='subhalo'):              
 
         group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift))
-        group_lengths=group_lengths[:,1] 
+        group_lengths=group_lengths[:,p_type] 
         group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
         
         subhalo_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift))
@@ -255,7 +255,7 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
         subhalo_indices=numpy.arange(0,len(subhalo_lengths))
         
         
-        subhalo_group_number,output_redshift=(get_subhalo_property(output_path,'SubhaloGrNr', desired_redshift));
+        subhalo_group_number,output_redshift=(get_subhalo_property(output_path,'SubhaloGrNr', desired_redshift,list_all=False));
         desired_group_number=subhalo_group_number[subhalo_index]  
         subhalo_lengths=subhalo_lengths[subhalo_group_number==desired_group_number]
         subhalo_offsets=numpy.array([sum(subhalo_lengths[0:i]) for i in range(0,len(subhalo_lengths))])
@@ -264,7 +264,7 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
         #print(len(mask)),mask
         subhalo_indices=subhalo_indices[mask]  
         subhalo_final_indices=numpy.arange(0,len(subhalo_indices))
-        group_particles=requested_property_parent_group[group_offsets[desired_group_number]:group_offsets[desired_group_number]+group_lengths[desired_group_number]]   
+        group_particles=requested_property[group_offsets[desired_group_number]:group_offsets[desired_group_number]+group_lengths[desired_group_number]]   
 
         #subhalo_indices=subhalo_indices[subhalo_group_number==desired_group_number]
         final_index=(subhalo_final_indices[subhalo_indices==subhalo_index])[0]
@@ -508,6 +508,105 @@ def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100):
             print("Maximum number of iterations reached! Aborting")
             break
     return progenitor_ids,final_merging_times
+
+
+def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./',group_type='groups'):    
+    global complete_particle_ids
+    particle_property='ParticleIDs'
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)
+    
+    if (os.path.exists(save_output_path+'group_ids_%d.npy'%output_snapshot)):
+        print("File exists!! group ids exist already")
+        group_ids=numpy.load(save_output_path+'group_ids_%d.npy'%output_snapshot)
+        return group_ids
+        
+    else:
+        print("Constructing_group_ids")
+        
+    
+    
+    complete_particle_ids,output_redshift=get_particle_property(output_path, particle_property, p_type, desired_redshift)
+    #print(len(complete_particle_ids))
+    group_ids=numpy.array([-1]*len(complete_particle_ids))
+    def find_index(id_to_be_searched):
+        #print(numpy.where(complete_particle_ids==id_to_be_searched))
+        
+        return (numpy.where(complete_particle_ids==id_to_be_searched))[0]
+    vec_find_index=numpy.vectorize(find_index)
+    
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
+    requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
+
+
+    if (group_type=='groups'):              
+        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
+        group_lengths=group_lengths[:,p_type] 
+        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])                   
+       #return group_particles,output_redshift
+    elif (group_type=='subhalo'):     
+        
+        print("Warning!! This is going to be very slow! Still under development")
+
+        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
+        group_lengths=group_lengths[:,p_type] 
+        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
+        
+        subhalo_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift,list_all=False))
+        subhalo_lengths=subhalo_lengths[:,p_type] 
+        subhalo_indices=numpy.arange(0,len(subhalo_lengths))
+        
+        
+        subhalo_group_number,output_redshift=(get_subhalo_property(output_path,'SubhaloGrNr', desired_redshift,list_all=False));
+
+ 
+        #subhalo_indices=subhalo_indices[subhalo_group_number==desired_group_number]
+        #final_index=(subhalo_final_indices[subhalo_indices==subhalo_index])[0]
+        
+        #group_particles=group_particles[subhalo_offsets[final_index]:subhalo_offsets[final_index]+subhalo_lengths[final_index]]
+      
+        #return subhalo_particles,group_particles,output_redshift     
+
+
+
+    MAX_ITERATIONS=10000
+    for subhalo_index in range(0,min(MAX_ITERATIONS,len(group_offsets))): 
+        if(subhalo_index%10==0):
+            aaa=1
+            #print(subhalo_index)
+            #print(len(group_ids[group_ids==-1]))
+            #print("-------------")
+        if (group_type=='groups'):
+            #print(len(group_offsets),subhalo_index)
+            complete_particle_ids_group_wise=requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]]
+        if (group_type=='subhalo'):     
+            desired_group_number=subhalo_group_number[subhalo_index]  
+            subhalo_lengths_for_group=subhalo_lengths[subhalo_group_number==desired_group_number]
+            subhalo_offsets_for_group=numpy.array([sum(subhalo_lengths[0:i]) for i in range(0,len(subhalo_lengths))])
+
+            mask=subhalo_group_number==desired_group_number
+            #print(len(mask)),mask
+            subhalo_indices_for_group=subhalo_indices[mask]  
+            subhalo_final_indices=numpy.arange(0,len(subhalo_indices_for_group))
+            group_particles=requested_property[group_offsets[desired_group_number]:group_offsets[desired_group_number]+group_lengths[desired_group_number]]   
+            #print(subhalo_indices_for_group,subhalo_index)
+            final_index=(subhalo_final_indices[subhalo_indices_for_group==subhalo_index])[0]
+            complete_particle_ids_group_wise=group_particles[subhalo_offsets_for_group[final_index]:subhalo_offsets_for_group[final_index]+subhalo_lengths_for_group[final_index]]
+
+        if (len(complete_particle_ids_group_wise)==0):
+            continue
+        #print(complete_particle_ids_group_wise)
+        indices_to_be_assigned=vec_find_index(complete_particle_ids_group_wise)
+        
+        group_ids[indices_to_be_assigned]=subhalo_index
+        #print(len(group_ids[group_ids==-1]))
+        if(len(group_ids[group_ids==-1])==0):
+            break
+    
+    if (subhalo_index==MAX_ITERATIONS-1):
+        print("Warning! Maximum number of iterations reached!")
+    print(output_redshift,output_snapshot)
+    numpy.save(save_output_path+'group_ids_%d.npy'%output_snapshot,group_ids)
+    return group_ids
             
         
         
