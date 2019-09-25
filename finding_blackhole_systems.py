@@ -1,9 +1,9 @@
 #-----------------------This code takes a set of objects and their positions and groups them based on Friends of Friends linking length criterion
 #-----------------------------------import required packages--------------------------------------------------------------------
 import sys
-sys.path.append('/home/aklantbhowmick/anaconda3/lib/python3.7/site-packages')
-sys.path.append('/home/aklantbhowmick/anaconda3/lib/python3.7/site-packages/scalpy/')
-sys.path.append('/home/aklantbhowmick/anaconda3/envs/nbodykit-env/lib/python3.6/site-packages/')
+#sys.path.append('/home/aklantbhowmick/anaconda3/lib/python3.7/site-packages')
+#sys.path.append('/home/aklantbhowmick/anaconda3/lib/python3.7/site-packages/scalpy/')
+#sys.path.append('/home/aklantbhowmick/anaconda3/envs/nbodykit-env/lib/python3.6/site-packages/')
 import numpy
 import time
 import h5py
@@ -13,7 +13,12 @@ import arepo_package
 sys.setrecursionlimit(20000)
 PROJECTION_MODE=True
 SPECTROSCOPIC_MODE=True
-basePath='/ufrc/lblecha/aklantbhowmick/arepo_runs_aklant/L25_n256/output/'
+
+run='L75n1820TNG'
+basePath='/n/hernquistfs3/IllustrisTNG/Runs/'+run+'/output/'
+
+
+#basePath='/ufrc/lblecha/aklantbhowmick/arepo_runs_aklant/L25_n256/output/'
 #--------------------------------------------------------------------------------------------
 
 BOXSIZE=arepo_package.get_box_size(basePath)/1e3    # Simulation Box size: Default value set for Massive Black II. Note:- Periodic boundary conditions apply 
@@ -108,15 +113,16 @@ def generate_tags(log_bhmass_cut,redshift,log_LINKING_LENGTH,START):
     p_type=5
     desired_redshift=redshift    
     output_redshift,output_snap=arepo_package.desired_redshift_to_output_redshift(basePath,desired_redshift)
-    
+ 
+    print('Reading positions')   
     Coordinates,output_redshift=arepo_package.get_particle_property(basePath, 'Coordinates', p_type,desired_redshift, list_all=False)
-
+  
     pos_x=Coordinates[:,0]/1e3
     pos_y=Coordinates[:,1]/1e3
     pos_z=Coordinates[:,2]/1e3
 
     #print(pos_x)
-    
+    print('Reading velocities')
     Velocities,output_redshift=arepo_package.get_particle_property(basePath, 'Velocities', p_type,desired_redshift, list_all=False)
 
     vel_x=Velocities[:,0]
@@ -130,13 +136,18 @@ def generate_tags(log_bhmass_cut,redshift,log_LINKING_LENGTH,START):
                 pos_y=(pos_y+vel_y*numpy.sqrt(scale)/(scale*H))*line_of_sight_squashing_factor
         if (PROJECTION=='z'):
                 pos_z=(pos_z+vel_z*numpy.sqrt(scale)/(scale*H))*line_of_sight_squashing_factor
+
+    print('Reading particle ids')
     blackhole_id,output_redshift=arepo_package.get_particle_property(basePath, 'ParticleIDs', p_type,desired_redshift, list_all=False)
+    print('Reading bh masses')
     bhmass,output_redshift=arepo_package.get_particle_property(basePath, 'BH_Mass', p_type,desired_redshift, list_all=False)
     bhmass=bhmass*1e10
         
-
-    hosthalo_id=arepo_package.generate_group_ids(basePath,desired_redshift,5,save_output_path=basePath[:-7]+'post_processing/')
+    print('Reading/generating group ids')
+    hosthalo_id=arepo_package.generate_group_ids(basePath,desired_redshift,5,save_output_path='./'+run+'_group_ids/')
     subhalo_id=hosthalo_id
+
+    print('linking blackholes')
 
 
     position_vector=numpy.transpose([pos_x,pos_y,pos_z])
@@ -230,11 +241,18 @@ TEST_LENGTH_los=10000.
 
 
 FOF=1   # Activate if you want Friends of Friends
-redshift_space=[0.06]
+redshift_space=[4,3,2,1,0]
 log_LINKING_LENGTH_space=numpy.linspace(-2,2,40)
 log_luminosity_cuts_space=[43.0,43.5,44.0,44.5,45.0,45.5]
-log_bhmass_cuts_space=[8.0]
+log_bhmass_cuts_space=[8,7,6]
 #log_luminosity_cuts_space=[42.5,42.0]
+
+output_path_for_FOF_tags='/n/home00/aklantbhowmick/illustris_processing/FOF_tag_outputs/'
+output_path_for_RICHNESS='/n/home00/aklantbhowmick/illustris_processing/richness_outputs/'
+
+#run='L75n1820TNG'
+#basePath='/n/hernquistfs3/IllustrisTNG/Runs/'+run+'/output/'
+
 
 for redshift in redshift_space:
     H=H0*numpy.sqrt((1.+redshift)**3*omm+oml)
@@ -257,14 +275,13 @@ for redshift in redshift_space:
             elif (SPECTROSCOPIC_MODE):
                 pickle.dump([final_FOF_tag,subsampled_quantities],open('/nfs/nas-0-1/akbhowmi/FOF_tag_outputs_bhmass_cuts/log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f_projected_%s_window_%.1f_spectroscopic_squashing_%.2f.pickle'%(log_bhmass_cut,redshift,log_LINKING_LENGTH,PROJECTION,vmax,line_of_sight_squashing_factor),'w'))
             else:
-                numpy.save('/ufrc/lblecha/aklantbhowmick/FOF_tag_outputs/log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f.npy'%(log_bhmass_cut,redshift,log_LINKING_LENGTH),[final_FOF_tag,subsampled_quantities])
+                numpy.save(output_path_for_FOF_tags+'%s_log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f.npy'%(run,log_bhmass_cut,redshift,log_LINKING_LENGTH),[final_FOF_tag,subsampled_quantities])
                 #print(final_FOF_tag)
                 #print("------------")
                 
                 
                 
-                final_FOF_tag,subsampled_quantities=numpy.load('/ufrc/lblecha/aklantbhowmick/FOF_tag_outputs/log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f.npy'%(log_bhmass_cut,redshift,log_LINKING_LENGTH))
-                #print(final_FOF_tag)
+                final_FOF_tag,subsampled_quantities=numpy.load(output_path_for_FOF_tags+'%s_log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f.npy'%(run,log_bhmass_cut,redshift,log_LINKING_LENGTH))
                 position_vector_cut,velocity_vector_gadget_units_cut,blackhole_id_cut,subhalo_id_cut,hosthalo_id_cut=subsampled_quantities
                 unique_FOF_tag=numpy.unique(final_FOF_tag)
                 RICHNESS=[]
@@ -287,10 +304,10 @@ for redshift in redshift_space:
                     
                 RICHNESS=numpy.array(RICHNESS)
                 #print(RICHNESS) 
-                numpy.save('/ufrc/lblecha/aklantbhowmick/multiplicity_functions/richness_log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f.npy'%(log_bhmass_cut,redshift,log_LINKING_LENGTH),RICHNESS)
+                numpy.save(output_path_for_RICHNESS+'%s_richness_log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f.npy'%(run,log_bhmass_cut,redshift,log_LINKING_LENGTH),RICHNESS)
 
                 
-                RICHNESS=numpy.load('/ufrc/lblecha/aklantbhowmick/multiplicity_functions/richness_log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f.npy'%(log_bhmass_cut,redshift,log_LINKING_LENGTH))
+                #RICHNESS=numpy.load(output_path_for_RICHNESS+'%s_richness_log_bhmass_cut_%.1f_redshift_%.2f_log_LINKING_LENGTH_%.2f.npy'%(log_bhmass_cut,redshift,log_LINKING_LENGTH))
                 #if(log_LINKING_LENGTH==-1.794871794871795):
                 #    print(RICHNESS)    
                 #    break
