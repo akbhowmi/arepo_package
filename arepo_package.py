@@ -514,6 +514,10 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
     global complete_particle_ids
     particle_property='ParticleIDs'
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)
+  
+    if not os.path.exists(save_output_path):
+        print("Making directory for storing groupids")
+        os.makedirs(save_output_path)
     
     if (os.path.exists(save_output_path+'group_ids_%d.npy'%output_snapshot)):
         print("File exists!! group ids exist already")
