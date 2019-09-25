@@ -110,48 +110,7 @@ def generate_tags(log_bhmass_cut,redshift,log_LINKING_LENGTH,START):
     #g=h5py.File('/nfs/nas-0-1/akbhowmi/quasar_properties/bh_lum_host_halo_with_id_and_mass_z%.2f_and_sub_halo_id_added_velocity'%redshift)
     #g2=h5py.File('/nfs/nas-0-1/akbhowmi/quasar_properties/bh_lum_host_halo_with_id_and_mass_z%.2f_and_halo_id_added_velocity'%redshift)
 
-    p_type=5
-    desired_redshift=redshift    
-    output_redshift,output_snap=arepo_package.desired_redshift_to_output_redshift(basePath,desired_redshift)
- 
-    print('Reading positions')   
-    Coordinates,output_redshift=arepo_package.get_particle_property(basePath, 'Coordinates', p_type,desired_redshift, list_all=False)
-  
-    pos_x=Coordinates[:,0]/1e3
-    pos_y=Coordinates[:,1]/1e3
-    pos_z=Coordinates[:,2]/1e3
 
-    #print(pos_x)
-    print('Reading velocities')
-    Velocities,output_redshift=arepo_package.get_particle_property(basePath, 'Velocities', p_type,desired_redshift, list_all=False)
-
-    vel_x=Velocities[:,0]
-    vel_y=Velocities[:,1]
-    vel_z=Velocities[:,2]
-    if (PROJECTION_MODE | SPECTROSCOPIC_MODE):
-        print("Warning: Performing redshift space distortions!!!")
-        if (PROJECTION=='x'):
-                pos_x=(pos_x+vel_x*numpy.sqrt(scale)/(scale*H))*line_of_sight_squashing_factor
-        if (PROJECTION=='y'):
-                pos_y=(pos_y+vel_y*numpy.sqrt(scale)/(scale*H))*line_of_sight_squashing_factor
-        if (PROJECTION=='z'):
-                pos_z=(pos_z+vel_z*numpy.sqrt(scale)/(scale*H))*line_of_sight_squashing_factor
-
-    print('Reading particle ids')
-    blackhole_id,output_redshift=arepo_package.get_particle_property(basePath, 'ParticleIDs', p_type,desired_redshift, list_all=False)
-    print('Reading bh masses')
-    bhmass,output_redshift=arepo_package.get_particle_property(basePath, 'BH_Mass', p_type,desired_redshift, list_all=False)
-    bhmass=bhmass*1e10
-        
-    print('Reading/generating group ids')
-    hosthalo_id=arepo_package.generate_group_ids(basePath,desired_redshift,5,save_output_path='./'+run+'_group_ids/')
-    subhalo_id=hosthalo_id
-
-    print('linking blackholes')
-
-
-    position_vector=numpy.transpose([pos_x,pos_y,pos_z])
-    velocity_vector_gadget_units=numpy.transpose([vel_x,vel_y,vel_z])
 #-------------------------This section performs cuts based on what the user desires----------------------------------     
 #    mask_luminosity=(bolometric_luminosity>10**log_luminosity_cuts)
     mask_bhmass=(bhmass>10**log_bhmass_cut)
@@ -254,7 +213,55 @@ output_path_for_RICHNESS='/n/home00/aklantbhowmick/illustris_processing/richness
 #basePath='/n/hernquistfs3/IllustrisTNG/Runs/'+run+'/output/'
 
 
+
+
+
+
+
+
+
+
+
+
+
 for redshift in redshift_space:
+    p_type=5
+    desired_redshift=redshift    
+    output_redshift,output_snap=arepo_package.desired_redshift_to_output_redshift(basePath,desired_redshift)
+ 
+    print('Reading positions')   
+    Coordinates,output_redshift=arepo_package.get_particle_property(basePath, 'Coordinates', p_type,desired_redshift, list_all=False)
+    pos_x=Coordinates[:,0]/1e3
+    pos_y=Coordinates[:,1]/1e3
+    pos_z=Coordinates[:,2]/1e3
+    #print(pos_x)
+    print('Reading velocities')
+    Velocities,output_redshift=arepo_package.get_particle_property(basePath, 'Velocities', p_type,desired_redshift, list_all=False)
+
+    vel_x=Velocities[:,0]
+    vel_y=Velocities[:,1]
+    vel_z=Velocities[:,2]
+    if (PROJECTION_MODE | SPECTROSCOPIC_MODE):
+        print("Warning: Performing redshift space distortions!!!")
+        if (PROJECTION=='x'):
+                pos_x=(pos_x+vel_x*numpy.sqrt(scale)/(scale*H))*line_of_sight_squashing_factor
+        if (PROJECTION=='y'):
+                pos_y=(pos_y+vel_y*numpy.sqrt(scale)/(scale*H))*line_of_sight_squashing_factor
+        if (PROJECTION=='z'):
+                pos_z=(pos_z+vel_z*numpy.sqrt(scale)/(scale*H))*line_of_sight_squashing_factor
+
+    print('Reading particle ids')
+    blackhole_id,output_redshift=arepo_package.get_particle_property(basePath, 'ParticleIDs', p_type,desired_redshift, list_all=False)
+    print('Reading bh masses')
+    bhmass,output_redshift=arepo_package.get_particle_property(basePath, 'BH_Mass', p_type,desired_redshift, list_all=False)
+    bhmass=bhmass*1e10
+    print('Reading/generating group ids')
+    hosthalo_id=arepo_package.generate_group_ids(basePath,desired_redshift,5,save_output_path='./'+run+'_group_ids/')
+    subhalo_id=hosthalo_id
+    print('linking blackholes')
+    position_vector=numpy.transpose([pos_x,pos_y,pos_z])
+    velocity_vector_gadget_units=numpy.transpose([vel_x,vel_y,vel_z])
+    
     H=H0*numpy.sqrt((1.+redshift)**3*omm+oml)
     scale=1./(1.+redshift)
     window=2.*vmax/H/scale
