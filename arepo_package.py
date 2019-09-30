@@ -120,6 +120,30 @@ def mass_function(HM,box_size,Nbins,log_HM_min,log_HM_max):
     return centers,HMF,dHMF
 
 
+def BH_mass_function_AGN_fraction(bhmass,bolometric_luminosity,box_size,Nbins,log_HM_min,log_HM_max,log_lbol_cut):
+    box_size_Mpc=box_size/1000.
+    #print(HM)
+    HM=bhmass
+    def extract(HM_min,HM_max):
+        mask=(HM>HM_min)&(HM<HM_max)
+        mask2=mask&(bolometric_luminosity>10**log_lbol_cut)
+        return (HM_min+HM_max)/2,len(HM[mask]),float(len(HM[mask2]))/(len(HM[mask])+0.00000001),numpy.sqrt(float(len(HM[mask2])))/(len(HM[mask])+0.00000001)
+
+    HM_bin=numpy.logspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
+    out=[extract(HM_bin[i],HM_bin[i+1]) for i in range(0,len(HM_bin)-1)]
+    #return out
+    centers=numpy.array(list(zip(*out))[0])
+    counts=numpy.array(list(zip(*out))[1])
+    AGN_fraction=numpy.array(list(zip(*out))[2])
+    d_AGN_fraction=numpy.array(list(zip(*out))[3])
+    dM=centers*numpy.diff(numpy.log(centers))[0]
+    HMF=counts/dM/box_size_Mpc**3
+    dHMF=numpy.sqrt(counts)/dM/box_size_Mpc**3
+    return centers,HMF,dHMF,AGN_fraction,d_AGN_fraction
+
+
+
+
 def get_mass_function(category,object_type,desired_redshift,output_path,Nbins,log_mass_min,log_mass_max,list_all=True,dynamical_bh_mass=True):
     box_size=get_box_size(output_path)
       #print (box_)
@@ -328,7 +352,7 @@ def get_merger_events(output_path):
     scale_fac_complete=numpy.array([])
 
     BH_id1_complete=numpy.array([],dtype=int)
-    BH_mass1_complete=numpy.array([])
+    _f1_complete=numpy.array([])
     BH_id2_complete=numpy.array([],dtype=int)
     BH_mass2_complete=numpy.array([])
 
