@@ -651,7 +651,7 @@ def mean_plot(x,y,xscl,yscl,nbins):
     sy, _ = numpy.histogram(x, bins=nbins, weights=y)
     sy2, _ = numpy.histogram(x, bins=nbins, weights=y*y)
     mean = sy / n
-    std = np.sqrt(sy2/n - mean*mean)
+    std = numpy.sqrt(sy2/n - mean*mean)
     #std=1/numpy.sqrt(n)
     #plt.plot(x, y, 'bo')
     #plt.errorbar((_[1:] + _[:-1])/2, mean,std, color='blue', label = 'z = 8')
