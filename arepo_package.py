@@ -75,6 +75,10 @@ def desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=Tr
         print("Output snapshot: ",output_snapshot)            
     return output_redshift,output_snapshot      
         
+def make_cuts(quantities,cut): #selects an array of quantities (argument 1) and makes cuts (argument 2)
+    cutted_quantities=[quantity[cut] for quantity in quantities]
+    return cutted_quantities
+
 def get_group_property(output_path,group_property,desired_redshift,list_all=True):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
     halos = il.groupcat.loadHalos(output_path,output_snapshot,fields=None)
@@ -637,10 +641,34 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
     return group_ids
             
         
+def mean_plot(x,y,xscl,yscl,nbins):
+    #nbins = 5
+    if(yscl==True):
+        y=log10(y)
+    if(xscl==True):
+        x=log10(x)
+    n, _ = numpy.histogram(x, bins=nbins)
+    sy, _ = numpy.histogram(x, bins=nbins, weights=y)
+    sy2, _ = numpy.histogram(x, bins=nbins, weights=y*y)
+    mean = sy / n
+    #std = np.sqrt(sy2/n - mean*mean)
+    std=1/numpy.sqrt(n)
+    #plt.plot(x, y, 'bo')
+    #plt.errorbar((_[1:] + _[:-1])/2, mean,std, color='blue', label = 'z = 8')
+    #mean= savitzky_golay(mean, 11, 3)
+    #print (_[1:] + _[:-1])/2
+    #print mean
+    mask=(std/mean)*100<100.
+    
+    x=((_[1:] + _[:-1])/2)[mask]
+    y=mean[mask]
+    yul=y+std[mask]
+    yll=y-std[mask]
+    return x,y,yul,yll#,plt.errorbar(x,y,color=colour,linewidth=3,label=labl),plt.fill_between(x,yll, yul,color=colour,alpha=0.5)
         
         
     
-    
+
     
     
         
