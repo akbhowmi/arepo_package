@@ -463,9 +463,11 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id):
     
   
     total_desired_ids,merging_times=get_progenitors_and_descendants(output_path,desired_id)
-    
+    ii=0
     for output_file_name in output_file_names[:]:
         if ('blackhole_details' in output_file_name):
+            print(ii)
+            ii+=1
             full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
             BH_ids=vec_parse_id_col(full_data[:,0])
             scale_factors=(full_data[:,1]).astype('float')
