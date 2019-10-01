@@ -356,7 +356,7 @@ def get_merger_events(output_path):
     scale_fac_complete=numpy.array([])
 
     BH_id1_complete=numpy.array([],dtype=int)
-    _f1_complete=numpy.array([])
+    BH_mass1_complete=numpy.array([])
     BH_id2_complete=numpy.array([],dtype=int)
     BH_mass2_complete=numpy.array([])
 
@@ -498,7 +498,7 @@ def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100):
     BH_mdots_for_id=numpy.array([])
     rhos_for_id=numpy.array([])
     sound_speeds_for_id=numpy.array([])
-    merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete=get_merger_events(output_path)
+    merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events(output_path)
 
     progenitor_ids=numpy.array([desired_id],dtype=int)
     final_merging_times=numpy.array([])
