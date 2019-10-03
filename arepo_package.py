@@ -668,7 +668,21 @@ def mean_plot(x,y,xscl,yscl,nbins):
     yll=y-std[mask]
     return x,y,yul,yll#,plt.errorbar(x,y,color=colour,linewidth=3,label=labl),plt.fill_between(x,yll, yul,color=colour,alpha=0.5)
         
+def luminosity_function(HM,box_size,log_HM_min,log_HM_max,Nbins):
+        def extract(HM_min,HM_max):
+            mask=(HM>HM_min)&(HM<HM_max)
+            #print len(HM[mask])
+            return (HM_min+HM_max)/2,len(HM[mask])
         
+        HM_bin=numpy.logspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
+        out=[extract(HM_bin[i],HM_bin[i+1]) for i in range(0,len(HM_bin)-1)]
+        centers=numpy.array(list(zip(*out))[0])
+        counts=numpy.array(list(zip(*out))[1])
+        #print counts
+        dlogM=numpy.diff(numpy.log10(centers))[0]
+        HMF=counts/dlogM/box_size**3
+        dHMF=numpy.sqrt(counts)/dlogM/box_size**3
+        return centers,HMF,dHMF        
     
 
     
