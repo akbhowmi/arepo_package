@@ -604,8 +604,8 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
 
 
 
-    MAX_ITERATIONS=10000
-    for subhalo_index in range(0,min(MAX_ITERATIONS,len(group_offsets))): 
+    #MAX_ITERATIONS=1000000
+    for subhalo_index in range(0,len(group_offsets)): 
         if(subhalo_index%10==0):
             aaa=1
             #print(subhalo_index)
@@ -638,8 +638,8 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
         if(len(group_ids[group_ids==-1])==0):
             break
     
-    if (subhalo_index==MAX_ITERATIONS-1):
-        print("Warning! Maximum number of iterations reached!")
+    #if (subhalo_index==MAX_ITERATIONS-1):
+    #    print("Warning! Maximum number of iterations reached!")
     print(output_redshift,output_snapshot)
     numpy.save(save_output_path+'group_ids_%d.npy'%output_snapshot,group_ids)
     return group_ids
