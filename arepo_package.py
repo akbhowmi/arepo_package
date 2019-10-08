@@ -575,7 +575,8 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
     if (group_type=='groups'):              
         group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
         group_lengths=group_lengths[:,p_type] 
-        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])                   
+        #group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])   
+        group_offsets=numpy.append(0,(numpy.cumsum(group_lengths))[:-1])
        #return group_particles,output_redshift
     elif (group_type=='subhalo'):     
         
