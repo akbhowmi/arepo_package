@@ -540,7 +540,7 @@ def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100):
     return progenitor_ids,final_merging_times
 
 
-def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./',group_type='groups'):    
+def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./',group_type='groups',create=False):    
     global complete_particle_ids
     particle_property='ParticleIDs'
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)
@@ -549,7 +549,7 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
         print("Making directory for storing groupids")
         os.makedirs(save_output_path)
     
-    if (os.path.exists(save_output_path+'group_ids_%d.npy'%output_snapshot)):
+    if ((os.path.exists(save_output_path+'group_ids_%d.npy'%output_snapshot))&(create==False)):
         print("File exists!! group ids exist already")
         group_ids=numpy.load(save_output_path+'group_ids_%d.npy'%output_snapshot)
         return group_ids
@@ -571,11 +571,12 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
     requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
 
-
+    print('Reading group lengths')
     if (group_type=='groups'):              
         group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
         group_lengths=group_lengths[:,p_type] 
         #group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])   
+        print('Constructing offsets')
         group_offsets=numpy.append(0,(numpy.cumsum(group_lengths))[:-1])
        #return group_particles,output_redshift
     elif (group_type=='subhalo'):     
@@ -633,7 +634,7 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
         indices_to_be_assigned=vec_find_index(complete_particle_ids_group_wise)
         
         group_ids[indices_to_be_assigned]=subhalo_index
-        #print(len(group_ids[group_ids==-1]))
+        print(len(group_ids[group_ids==-1]))
         if(len(group_ids[group_ids==-1])==0):
             break
     
