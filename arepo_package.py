@@ -669,7 +669,22 @@ def mean_plot(x,y,xscl,yscl,nbins):
     yul=y+std[mask]
     yll=y-std[mask]
     return x,y,yul,yll#,plt.errorbar(x,y,color=colour,linewidth=3,label=labl),plt.fill_between(x,yll, yul,color=colour,alpha=0.5)
-        
+ 
+
+def median_plot(x,y,xscl,yscl,nbins):
+    #nbins = 5
+    if(yscl==True):
+        y=log10(y)
+    if(xscl==True):
+        x=log10(x)
+    x_space=numpy.linspace(numpy.amin(x),numpy.amax(x),nbins)
+    y_space_med=[numpy.median(y[(x>x_space[i])&(x<x_space[i+1])]) for i in range(0,len(x_space)-1)]
+    x_space_med=[(x_space[i]+x_space[i+1])/2 for i in range(0,len(x_space)-1)]
+    return x_space_med,y_space_med
+    
+    
+    
+    
 def luminosity_function(HM,box_size,log_HM_min,log_HM_max,Nbins):
         def extract(HM_min,HM_max):
             mask=(HM>HM_min)&(HM<HM_max)
