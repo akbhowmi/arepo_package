@@ -717,15 +717,21 @@ def generate_subhalo_ids(output_path,desired_redshift,p_type,save_output_path='.
     numpy.save(save_output_path+'distance_from_subhalo_center_%d.npy'%output_snapshot,distance_from_subhalo_center)    
     return subhalo_ids,distance_from_subhalo_center
         
-def mean_plot(x,y,xscl,yscl,nbins):
+def mean_plot(x,y,xscl,yscl,nbins,manual_bins=False,M_BINS=numpy.arange(0,200)):
     #nbins = 5
     if(yscl==True):
         y=log10(y)
     if(xscl==True):
         x=log10(x)
-    n, _ = numpy.histogram(x, bins=nbins)
-    sy, _ = numpy.histogram(x, bins=nbins, weights=y)
-    sy2, _ = numpy.histogram(x, bins=nbins, weights=y*y)
+    if (manual_bins==False):
+        n, _ = numpy.histogram(x, bins=nbins)
+        sy, _ = numpy.histogram(x, bins=nbins, weights=y)
+        sy2, _ = numpy.histogram(x, bins=nbins, weights=y*y)
+        
+    else:
+        n, _ = numpy.histogram(x, bins=M_BINS)
+        sy, _ = numpy.histogram(x, bins=M_BINS, weights=y)
+        sy2, _ = numpy.histogram(x, bins=M_BINS, weights=y*y)
     mean = sy / n
     std = numpy.sqrt(sy2/n - mean*mean)
     #std=1/numpy.sqrt(n)
@@ -742,6 +748,7 @@ def mean_plot(x,y,xscl,yscl,nbins):
     yll=y-std[mask]
     return x,y,yul,yll#,plt.errorbar(x,y,color=colour,linewidth=3,label=labl),plt.fill_between(x,yll, yul,color=colour,alpha=0.5)
  
+
 
 def median_plot(x,y,xscl,yscl,nbins):
     #nbins = 5
