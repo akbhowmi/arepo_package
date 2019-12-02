@@ -229,13 +229,92 @@ def correlate_info(data, NBINS, RMIN, RMAX, BOXSIZE, WRAP):
     else:
         return None, None
 
+    
+    
+def cross_correlate_info(data1,data2, NBINS, RMIN, RMAX, BOXSIZE, WRAP):
+    if data1 is not None:
+        if RMAX is None:
+            RMAX = BOXSIZE
+        
+        if WRAP:
+            wrap_length = BOXSIZE/1e3
+        else:
+            wrap_length = None
+        
+        dataset1 = correlate.points(data1, boxsize = wrap_length) 
+        dataset2 = correlate.points(data2, boxsize = wrap_length) 
+        
+        binning = correlate.RBinning(numpy.logspace(numpy.log10(RMIN),numpy.log10(RMAX),NBINS+1))
+        
+#	RR=N**2*numpy.asarray([poiss(rbin[i],rbin[i+1]) for i in range(0,nbins)])
+        DD = correlate.paircount(dataset1, dataset2, binning, np=16)
+        DD = DD.sum1
+        
+#        print 'Done correlating'
+        r = binning.centers
+        rbin=binning.edges
+        N1=len(data1)
+        N2=len(data2)
+        
+        RR=(N1*N2)*numpy.asarray([poiss(rbin[i],rbin[i+1],BOXSIZE) for i in range(0,NBINS)])
+    
+        return r, DD,RR
+    else:
+        return None, None
+    
 def get_dark_matter_correlation_function(output_path,input_redshift,NBINS, RMIN, RMAX, WRAP,subsample_factor):
     BOXSIZE=get_box_size(output_path)
+    print("boxsize:",BOXSIZE)
     positions,output_redshift=get_particle_property(output_path,'Coordinates',1,input_redshift)
     positions=positions/1e3
     r,DD,RR=correlate_info(positions[::subsample_factor],NBINS, RMIN, RMAX, BOXSIZE, WRAP)
     xi=DD/RR-1
-    return r,DD,RR,xi,output_redshift
+    dxi=numpy.sqrt(DD)/RR
+    return r,DD,RR,xi,dxi,output_redshift
+
+def get_dark_matter_correlation_function_zoom(output_path,input_redshift,NBINS, RMIN, RMAX, WRAP,subsample_factor):
+
+    BOXSIZE=get_box_size(output_path)
+    #input_redshift=2.0
+    positions0,output_redshift=get_particle_property(output_path,'Coordinates',1,input_redshift)
+    positions0=positions0/1e3
+    header=load_snapshot_header(output_path,input_redshift)
+    mass0=header['MassTable'][1]
+
+    low_res_masses,output_redshift=get_particle_property(output_path,'Masses',2,input_redshift)
+    low_res_positions,output_redshift=get_particle_property(output_path,'Coordinates',2,input_redshift)
+
+    unique_low_res_masses=numpy.unique(low_res_masses)
+    mass1=unique_low_res_masses[0]
+    mass2=unique_low_res_masses[1]
+
+    positions1=low_res_positions[low_res_masses==mass1]
+    positions2=low_res_positions[low_res_masses==mass2]
+    positions1=positions1/1e3
+    positions2=positions2/1e3
+
+
+    #subsample_factor=500
+    r,DD00,RR00=correlate_info(positions0[::subsample_factor],NBINS, RMIN, RMAX, BOXSIZE, WRAP)
+    r,DD11,RR11=correlate_info(positions1[::subsample_factor],NBINS, RMIN, RMAX, BOXSIZE, WRAP)
+    r,DD22,RR22=correlate_info(positions2[::subsample_factor],NBINS, RMIN, RMAX, BOXSIZE, WRAP)
+
+    r,DD01,RR01=cross_correlate_info(positions0[::subsample_factor],positions1[::subsample_factor],NBINS, RMIN, RMAX, BOXSIZE, WRAP)
+    r,DD02,RR02=cross_correlate_info(positions0[::subsample_factor],positions2[::subsample_factor],NBINS, RMIN, RMAX, BOXSIZE, WRAP)
+    r,DD12,RR12=cross_correlate_info(positions1[::subsample_factor],positions2[::subsample_factor],NBINS, RMIN, RMAX, BOXSIZE, WRAP)
+    #mass0=mass1=mass2=1.
+    DD=mass0**2*DD00+mass1**2*DD11+mass2**2*DD22+mass0*mass1*DD01+mass0*mass2*DD02+mass1*mass2*DD12
+    DD_error=mass0**2*numpy.sqrt(DD00)+mass1**2*numpy.sqrt(DD11)+mass2**2*numpy.sqrt(DD22)+mass0*mass1*numpy.sqrt(DD01)+mass0*mass2*numpy.sqrt(DD02)+mass1*mass2*numpy.sqrt(DD12)
+    RR=mass0**2*RR00+mass1**2*RR11+mass2**2*RR22+mass0*mass1*RR01+mass0*mass2*RR02+mass1*mass2*RR12
+    binning = correlate.RBinning(numpy.logspace(numpy.log10(RMIN),numpy.log10(RMAX),NBINS+1))
+    rbin=binning.edges
+    #RR=(N**2-N)*numpy.asarray([arepo_package.poiss(rbin[i],rbin[i+1],BOXSIZE) for i in range(0,NBINS)])
+    
+    xi=DD/RR-1
+    dxi=DD_error/RR
+    return r,DD,RR,xi,dxi,output_redshift
+
+
 
 
 def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
