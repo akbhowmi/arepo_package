@@ -123,6 +123,31 @@ def mass_function(HM,box_size,Nbins,log_HM_min,log_HM_max):
     dHMF=numpy.sqrt(counts)/dM/box_size_Mpc**3
     return centers,HMF,dHMF
 
+def get_distribution(quantity,Nbins,minimum,maximum,boxsize):  
+    #sdsd
+    if ((min(quantity)<1000)&(max(quantity)>boxsize-1000)):
+        print('Warning:Reflection performed')
+        quantity[quantity<(boxsize/2)]+=boxsize   
+    else:
+        print('No Reflection performed')
+    def extract(mn,mx):
+        mask=(quantity>mn)&(quantity<mx)
+        return (mn+mx)/2,len(quantity[mask])
+    bin_edges=numpy.linspace(minimum,maximum,Nbins,endpoint=True)
+    out=[extract(bin_edges[i],bin_edges[i+1]) for i in range(0,len(bin_edges)-1)]
+    #return out
+    centers=numpy.array(list(zip(*out))[0])
+    counts=numpy.array(list(zip(*out))[1])
+    
+    mode=centers[counts==max(counts)]
+    
+    left_edge=numpy.amax(centers[(counts<5)&(centers<mode)])
+    right_edge=numpy.amin(centers[(counts<5)&(centers>mode)])
+    
+    return centers,counts,left_edge,right_edge
+
+
+
 
 def BH_mass_function_AGN_fraction(bhmass,bolometric_luminosity,box_size,Nbins,log_HM_min,log_HM_max,log_lbol_cut):
     box_size_Mpc=box_size/1000.
@@ -383,7 +408,7 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
         print("Error:Unidentified group type")
         
         
-def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,colormap='Blues_r',opacity=1):
+def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,scaled_halo_centers,colormap='Blues_r',opacity=1,about_COM=True,REPOSITION=False):
     x_pos=Coordinates[:,0]
     y_pos=Coordinates[:,1]
     z_pos=Coordinates[:,2]
@@ -410,11 +435,28 @@ def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,colormap=
         return new_position_options[get_minimum_distance]
 
     vectorized_min_dis = numpy.vectorize(min_dis)
-    x_pos_wrapped=vectorized_min_dis(COM_x,x_pos,boxsize)
-    y_pos_wrapped=vectorized_min_dis(COM_y,y_pos,boxsize)
-    z_pos_wrapped=vectorized_min_dis(COM_z,z_pos,boxsize)
+    if about_COM:
+        x_pos_wrapped=vectorized_min_dis(COM_x,x_pos,boxsize)
+        y_pos_wrapped=vectorized_min_dis(COM_y,y_pos,boxsize)
+        z_pos_wrapped=vectorized_min_dis(COM_z,z_pos,boxsize)
+    else:
+        if (REPOSITION):
+            x_pos=x_pos-(boxsize/2)+scaled_halo_centers[0]*boxsize
+            y_pos=y_pos-(boxsize/2)+scaled_halo_centers[1]*boxsize
+            z_pos=z_pos-(boxsize/2)+scaled_halo_centers[2]*boxsize
 
-    plane='xz'
+            x_pos[x_pos<0]+=boxsize
+            x_pos[x_pos>boxsize]-=boxsize
+            z_pos[z_pos<0]+=boxsize
+            z_pos[z_pos>boxsize]-=boxsize
+            y_pos[y_pos<0]+=boxsize
+            y_pos[y_pos>boxsize]-=boxsize
+        x_pos_wrapped=x_pos
+        y_pos_wrapped=y_pos
+        z_pos_wrapped=z_pos
+        
+
+    #plane='xz'
 
 
     if (plane=='xy'):
@@ -423,6 +465,8 @@ def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,colormap=
         obj.hist2d(y_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
     if (plane=='xz'):
         obj.hist2d(x_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
+        
+    return numpy.array([x_pos_wrapped,y_pos_wrapped,z_pos_wrapped])
 
         
 def get_merger_events(output_path):
