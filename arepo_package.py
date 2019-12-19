@@ -123,9 +123,14 @@ def mass_function(HM,box_size,Nbins,log_HM_min,log_HM_max):
     dHMF=numpy.sqrt(counts)/dM/box_size_Mpc**3
     return centers,HMF,dHMF
 
-def get_distribution(quantity,Nbins,minimum,maximum,boxsize):  
+def get_distribution(quantity,Nbins,minimum,maximum,boxsize,min_count):  
     #sdsd
-    if ((min(quantity)<1000)&(max(quantity)>boxsize-1000)):
+    
+    mask=(quantity<1000)
+    
+    mask2=(quantity>(boxsize-1000))
+    if(len(quantity[mask])>5)&(len(quantity[mask2])>5):
+    #if ((min(quantity)<1000)&(max(quantity)>boxsize-1000)):
         print('Warning:Reflection performed')
         quantity[quantity<(boxsize/2)]+=boxsize   
     else:
@@ -139,10 +144,13 @@ def get_distribution(quantity,Nbins,minimum,maximum,boxsize):
     centers=numpy.array(list(zip(*out))[0])
     counts=numpy.array(list(zip(*out))[1])
     
+    #print("centers:",centers)
+    #print("counts:",counts)
+    
     mode=centers[counts==max(counts)]
     
-    left_edge=numpy.amax(centers[(counts<5)&(centers<mode)])
-    right_edge=numpy.amin(centers[(counts<5)&(centers>mode)])
+    left_edge=numpy.amax(centers[(counts<min_count)&(centers<mode)])
+    right_edge=numpy.amin(centers[(counts<min_count)&(centers>mode)])
     
     return centers,counts,left_edge,right_edge
 
@@ -487,15 +495,22 @@ def get_merger_events(output_path):
 
     for name in output_file_names[:]:
         data=numpy.loadtxt(output_path+'blackhole_mergers/'+name)
-        #data=numpy.transpose(data)
-        try:
-            file_id=data[:,0].astype(int)
-            scale_fac=data[:,1]
 
-            BH_id1=data[:,2].astype(int)
-            BH_mass1=data[:,3]
-            BH_id2=data[:,4].astype(int)
-            BH_mass2=data[:,5]
+        try:
+            if (data.shape==(6,)):
+                file_id=numpy.array([data[0].astype(int)])
+                scale_fac=numpy.array([data[1]])
+                BH_id1=numpy.array([data[2].astype(int)])
+                BH_mass1=numpy.array([data[3]])
+                BH_id2=numpy.array([data[4].astype(int)])
+                BH_mass2=numpy.array([data[5]])                             
+            else:    
+                file_id=data[:,0].astype(int)
+                scale_fac=data[:,1]
+                BH_id1=data[:,2].astype(int)
+                BH_mass1=data[:,3]
+                BH_id2=data[:,4].astype(int)
+                BH_mass2=data[:,5]
 
             file_id_complete=numpy.append(file_id_complete,file_id)
             scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
@@ -542,7 +557,6 @@ def get_blackhole_history_high_res(output_path,desired_id):
     extract_events_as_primary_BH=primary_id==desired_id
     merging_partner_ids=numpy.append(primary_id[extract_events_as_secondary_BH],secondary_id[extract_events_as_primary_BH])    
     merging_times=numpy.append(merging_time[extract_events_as_secondary_BH],merging_time[extract_events_as_primary_BH])    
-
     total_desired_ids=numpy.append(numpy.array([desired_id]),merging_partner_ids)
     
     for output_file_name in output_file_names[:]:
@@ -584,8 +598,11 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id):
     rhos_for_id=numpy.array([])
     sound_speeds_for_id=numpy.array([])
     
-  
-    total_desired_ids,merging_times=get_progenitors_and_descendants(output_path,desired_id)
+    try:
+        total_desired_ids,merging_times=get_progenitors_and_descendants(output_path,desired_id)
+    except:
+        merging_times=[]
+        total_desired_ids=[desired_id]
     ii=0
     for output_file_name in output_file_names[:]:
         if ('blackhole_details' in output_file_name):
@@ -600,9 +617,10 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id):
             sound_speeds=(full_data[:,3]).astype('float')
 
             final_extract=numpy.array([False]*len(sound_speeds))
-            for d_id in total_desired_ids:
-                extract_id=(d_id==BH_ids)
-                final_extract=final_extract+extract_id
+            if (len(total_desired_ids)>0):
+                for d_id in total_desired_ids:
+                    extract_id=(d_id==BH_ids)
+                    final_extract=final_extract+extract_id
             #print(len(BH_ids),len(BH_ids[extract_id]))
             BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
             scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
