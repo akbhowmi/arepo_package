@@ -608,26 +608,31 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id):
         if ('blackhole_details' in output_file_name):
             print(ii)
             ii+=1
-            full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
-            BH_ids=vec_parse_id_col(full_data[:,0])
-            scale_factors=(full_data[:,1]).astype('float')
-            BH_masses=(full_data[:,2]).astype('float')
-            BH_mdots=(full_data[:,3]).astype('float')
-            rhos=(full_data[:,3]).astype('float')
-            sound_speeds=(full_data[:,3]).astype('float')
+            try:
+                full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
+           
+                
+                BH_ids=vec_parse_id_col(full_data[:,0])
+                scale_factors=(full_data[:,1]).astype('float')
+                BH_masses=(full_data[:,2]).astype('float')
+                BH_mdots=(full_data[:,3]).astype('float')
+                rhos=(full_data[:,3]).astype('float')
+                sound_speeds=(full_data[:,3]).astype('float')
 
-            final_extract=numpy.array([False]*len(sound_speeds))
-            if (len(total_desired_ids)>0):
-                for d_id in total_desired_ids:
-                    extract_id=(d_id==BH_ids)
-                    final_extract=final_extract+extract_id
-            #print(len(BH_ids),len(BH_ids[extract_id]))
-            BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
-            scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
-            BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
-            BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
-            rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
-            sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
+                final_extract=numpy.array([False]*len(sound_speeds))
+                if (len(total_desired_ids)>0):
+                    for d_id in total_desired_ids:
+                        extract_id=(d_id==BH_ids)
+                        final_extract=final_extract+extract_id
+                #print(len(BH_ids),len(BH_ids[extract_id]))
+                BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
+                scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
+                BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
+                BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
+                rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
+                sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
+            except:
+                aa=1
             
     return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
 
