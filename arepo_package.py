@@ -147,8 +147,8 @@ def get_distribution(quantity,Nbins,minimum,maximum,boxsize,min_count):
     #print("centers:",centers)
     #print("counts:",counts)
     
-    mode=centers[counts==max(counts)]
-    
+    mode=numpy.average(centers[counts==max(counts)])
+    print(mode)
     left_edge=numpy.amax(centers[(counts<min_count)&(centers<mode)])
     right_edge=numpy.amin(centers[(counts<min_count)&(centers>mode)])
     
@@ -414,6 +414,24 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
         return subhalo_particles,group_particles,output_redshift     
     else:
         print("Error:Unidentified group type")
+        
+        
+def reposition(original_position,scaled_halo_centers,boxsize):
+    x_pos=original_position[:,0]
+    y_pos=original_position[:,1]
+    z_pos=original_position[:,2]
+    
+    x_pos=x_pos-(boxsize/2)+scaled_halo_centers[0]*boxsize
+    y_pos=y_pos-(boxsize/2)+scaled_halo_centers[1]*boxsize
+    z_pos=z_pos-(boxsize/2)+scaled_halo_centers[2]*boxsize
+
+    x_pos[x_pos<0]+=boxsize
+    x_pos[x_pos>boxsize]-=boxsize
+    z_pos[z_pos<0]+=boxsize
+    z_pos[z_pos>boxsize]-=boxsize
+    y_pos[y_pos<0]+=boxsize
+    y_pos[y_pos>boxsize]-=boxsize
+    return numpy.transpose(numpy.array([x_pos,y_pos,z_pos]))
         
         
 def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,scaled_halo_centers,colormap='Blues_r',opacity=1,about_COM=True,REPOSITION=False):
