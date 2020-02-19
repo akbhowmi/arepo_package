@@ -838,7 +838,8 @@ def generate_subhalo_ids(output_path,desired_redshift,p_type,save_output_path='.
     if ((os.path.exists(save_output_path+'group_ids_%d.npy'%output_snapshot))&(create==False)):
         print("File exists!! subhalo ids exist already")
         subhalo_ids=numpy.load(save_output_path+'subhalo_ids_%d.npy'%output_snapshot)
-        return subhalo_ids
+        distance_from_subhalo_center=numpy.load(save_output_path+'distance_from_subhalo_center_%d.npy'%output_snapshot)
+        return subhalo_ids,distance_from_subhalo_center
     
     
     group_ids=generate_group_ids(output_path,desired_redshift,p_type,save_output_path=save_output_path)
