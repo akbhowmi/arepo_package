@@ -904,6 +904,83 @@ def generate_subhalo_ids(output_path,desired_redshift,p_type,save_output_path='.
     numpy.save(save_output_path+'subhalo_ids_%d.npy'%output_snapshot,subhalo_ids)
     numpy.save(save_output_path+'distance_from_subhalo_center_%d.npy'%output_snapshot,distance_from_subhalo_center)    
     return subhalo_ids,distance_from_subhalo_center
+
+def generate_subhalo_ids_beta(output_path,desired_redshift,p_type,save_output_path='./',create=False):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)   
+    if ((os.path.exists(save_output_path+'group_ids_%d.npy'%output_snapshot))&(create==False)):
+        print("File exists!! subhalo ids exist already")
+        subhalo_ids=numpy.load(save_output_path+'subhalo_ids_%d.npy'%output_snapshot)
+        distance_from_subhalo_center=numpy.load(save_output_path+'distance_from_subhalo_center_%d.npy'%output_snapshot)
+        return subhalo_ids,distance_from_subhalo_center
+    
+    
+    group_ids=generate_group_ids(output_path,desired_redshift,p_type,save_output_path=save_output_path)
+    BH_Pos,output_redshift=get_particle_property(output_path,'Coordinates',p_type,desired_redshift,list_all=False)
+    ParticleIDs,output_redshift=get_particle_property(output_path,'ParticleIDs',p_type,desired_redshift,list_all=False)
+    boxsize=get_box_size(output_path)
+
+    SubhaloGrNr,output_redshift=get_subhalo_property(output_path,'SubhaloGrNr',desired_redshift,list_all=False)
+    SubhaloPos,output_redshift=get_subhalo_property(output_path,'SubhaloPos',desired_redshift,list_all=False)
+    SubhaloMass,output_redshift=get_subhalo_property(output_path,'SubhaloMass',desired_redshift,list_all=False)
+    SubhaloMassType,output_redshift=get_subhalo_property(output_path,'SubhaloMassType',desired_redshift,list_all=False)
+    
+    
+    SubhaloBHMass=SubhaloMassType[:,p_type]*1e10
+    Subhalo_Indices=numpy.arange(len(SubhaloGrNr))
+    mask=SubhaloBHMass>0
+    #mask=SubhaloMass>=1e11
+    Subhalo_Indices_cut=Subhalo_Indices[mask]
+    SubhaloPos_cut=SubhaloPos[mask]
+    SubhaloGrNr_cut=SubhaloGrNr[mask]
+
+    def min_dis(median_position, position,box_size):
+            pos_1=position-median_position
+            pos_2=position-median_position+boxsize
+            pos_3=position-median_position-boxsize
+
+            new_position_options=numpy.array([pos_1,pos_2,pos_3])
+            get_minimum_distance=numpy.argmin(numpy.abs(new_position_options))
+            #print(new_position_options)
+
+            #print(get_minimum_distance)
+            return new_position_options[get_minimum_distance]
+
+
+    def get_subhalo_id(blackhole_info):
+        #print(blackhole_info)
+        blackhole_group_id=blackhole_info[0]
+        blackhole_position=blackhole_info[1]
+        extract_ids_within_the_parent_FOF=blackhole_group_id==SubhaloGrNr_cut
+        Subhalo_Indices_current_BH=Subhalo_Indices_cut[extract_ids_within_the_parent_FOF]
+        #print(Subhalo_Indices_current_BH)
+        SubhaloPos_current_BH=SubhaloPos_cut[extract_ids_within_the_parent_FOF]
+        x_pos_Subhalo=SubhaloPos_current_BH[:,0]
+        y_pos_Subhalo=SubhaloPos_current_BH[:,1]
+        z_pos_Subhalo=SubhaloPos_current_BH[:,2]
+
+        vectorized_min_dis = numpy.vectorize(min_dis)
+        try:
+            x_dis=vectorized_min_dis(blackhole_position[0],x_pos_Subhalo,boxsize)
+            y_dis=vectorized_min_dis(blackhole_position[1],y_pos_Subhalo,boxsize)
+            z_dis=vectorized_min_dis(blackhole_position[2],z_pos_Subhalo,boxsize)
+
+            distance_sq=x_dis**2+y_dis**2+z_dis**2
+            min_distance_sq=numpy.amin(distance_sq)
+            subhalo_id=(Subhalo_Indices_current_BH[distance_sq==min_distance_sq])[0]
+            return subhalo_id,min_distance_sq
+        except ValueError:
+            return -1,-1
+
+
+    blackhole_info_space=list(zip(group_ids,BH_Pos))
+    data=[get_subhalo_id(blackhole_info) for blackhole_info in blackhole_info_space]
+    subhalo_ids=(numpy.array(data))[:,0]
+    distance_from_subhalo_center=(numpy.array(data))[:,1]
+    numpy.save(save_output_path+'subhalo_ids_%d.npy'%output_snapshot,subhalo_ids)
+    numpy.save(save_output_path+'distance_from_subhalo_center_%d.npy'%output_snapshot,distance_from_subhalo_center)    
+    return subhalo_ids,distance_from_subhalo_center
+
+
         
 def mean_plot(x,y,xscl,yscl,nbins,manual_bins=False,M_BINS=numpy.arange(0,200)):
     #nbins = 5
