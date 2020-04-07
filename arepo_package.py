@@ -217,14 +217,17 @@ def get_particle_history(z_latest,z_earliest,z_no_of_bins,p_type,p_id_to_be_trac
     z_space=numpy.linspace(z_latest,z_earliest,z_no_of_bins)
     prperty_history=[]
     z_history=[]
-    for z in z_space: 
-        p_id_current_z,output_redshift=get_particle_property(output_path,'ParticleIDs',p_type,z,list_all=False)
-        extract_target_id=p_id_to_be_tracked==p_id_current_z
-        prperty_space,output_redshift=get_particle_property(output_path,desired_property,p_type,z,list_all=False)
-        temp=prperty_space[extract_target_id]
-        if (len(temp)==1):
-            prperty_history.append(temp[0])
-            z_history.append(output_redshift)
+    for z in z_space:
+        try:
+            p_id_current_z,output_redshift=get_particle_property(output_path,'ParticleIDs',p_type,z,list_all=False)
+            extract_target_id=p_id_to_be_tracked==p_id_current_z
+            prperty_space,output_redshift=get_particle_property(output_path,desired_property,p_type,z,list_all=False)
+            temp=prperty_space[extract_target_id]
+            if (len(temp)==1):
+                prperty_history.append(temp[0])
+                z_history.append(output_redshift)
+        except:
+            aa=1
     return numpy.array(prperty_history),numpy.array(z_history)
 
 def poiss(rmin,rmax,BOXSIZE):
@@ -1097,7 +1100,7 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
         mass_distribution.append(mass_inside_bin)
 
     mass_distribution=numpy.array(mass_distribution)
-    mass_density=mass_distribution/4/3.14/(10**bin_centers)**3
+    mass_density=mass_distribution/2/3.14/(10**bin_centers)**3/((numpy.diff(bin_centers))[0])/numpy.log(10)
     return bin_centers,mass_distribution,mass_density
         
         
