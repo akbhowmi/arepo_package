@@ -1100,7 +1100,7 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
         mass_distribution.append(mass_inside_bin)
 
     mass_distribution=numpy.array(mass_distribution)
-    mass_density=mass_distribution/2/3.14/(10**bin_centers)**3/((numpy.diff(bin_centers))[0])/numpy.log(10)
+    mass_density=mass_distribution/4./3.14/(10**bin_centers)**3/((numpy.diff(bin_centers))[0])/numpy.log(10)
     return bin_centers,mass_distribution,mass_density
         
         
