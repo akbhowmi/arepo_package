@@ -28,6 +28,16 @@ def get_snapshot_redshift_correspondence(output_path):
             redshift_space.append(redshift)   
     return numpy.array(snapshot_space),numpy.array(redshift_space)
 
+def get_bootstrap_error(sample,N_bootstrap,MODE):
+    data=[]
+    for i in range(0,N_bootstrap):        
+        resample=numpy.random.choice(sample,size=sample.shape, replace=True)
+        if (MODE=='mean'):
+            data.append(numpy.average(resample))
+        if (MODE=='median'):
+            data.append(numpy.median(resample))
+    return numpy.std(data)
+
 
 def get_box_size(output_path):
     output_file_names=os.listdir(output_path)
