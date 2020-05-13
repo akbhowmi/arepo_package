@@ -529,7 +529,10 @@ def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,scaled_ha
         
     return numpy.array([x_pos_wrapped,y_pos_wrapped,z_pos_wrapped])
 
-        
+def sort_X_based_on_Y(X,Y):
+    return numpy.array([x for _,x in sorted(zip(Y,X))])
+
+
 def get_merger_events(output_path):
 
     output_file_names=os.listdir(output_path+'blackhole_mergers/')
@@ -588,9 +591,76 @@ def get_merger_events(output_path):
 
     primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
     secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
-    return scale_fac_complete,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty
+    
+    scale_fac_complete_sorted=sort_X_based_on_Y(scale_fac_complete,scale_fac_complete)
+    primary_mass_sorted=sort_X_based_on_Y(primary_mass,scale_fac_complete)
+    secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,scale_fac_complete)
+    primary_id_sorted=sort_X_based_on_Y(primary_id,scale_fac_complete)
+    secondary_id_sorted=sort_X_based_on_Y(secondary_id,scale_fac_complete)
+    file_id_complete_sorted=sort_X_based_on_Y(file_id_complete,scale_fac_complete)
+    
+    return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty
 
-def get_blackhole_history_high_res(output_path,desired_id):
+def get_merger_events_from_snapshot(output_path,desired_redshift):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
+    print(output_snapshot,output_redshift)
+    tot_mergers=0
+    ID1=numpy.array([],dtype='uint64')
+    ID2=numpy.array([],dtype='uint64')
+    BH_Mass1=numpy.array([],dtype='float')
+    BH_Mass2=numpy.array([],dtype='float')
+
+    TaskID=numpy.array([],dtype='int')
+    Time=numpy.array([],dtype='float')
+    for i in range(0,16):
+        try:
+            if (output_snapshot>=10):
+                output_snapshot_str='%d'%output_snapshot
+            elif (output_snapshot<=9):
+                output_snapshot_str='0%d'%output_snapshot
+            print(output_snapshot_str)
+            g=h5py.File(output_path+'mergers_0%s/mergers_tab_0%s.%d.hdf5'%(output_snapshot_str,output_snapshot_str,i))
+            header=g['Header'].attrs
+            Merger=g.get('Merger')
+            print(list(Merger.keys()))
+            print(list(header))  
+            print("Number of mergers on File %d"%i,header.get('Nmergers_ThisFile'))
+            tot_mergers+=header.get('Nmergers_ThisFile')
+            ID1=numpy.append(ID1,Merger.get('ID1')[:])
+            ID2=numpy.append(ID2,Merger.get('ID2')[:])
+            BH_Mass1=numpy.append(BH_Mass1,Merger.get('BH_Mass1')[:])
+            BH_Mass2=numpy.append(BH_Mass2,Merger.get('BH_Mass2')[:])
+            TaskID=numpy.append(TaskID,Merger.get('TaskID')[:])
+            Time=numpy.append(Time,Merger.get('Time')[:])
+            #print(Merger.get('BH_mass1')[:])
+        except:
+            aa=1
+    print("Total number of mergers",tot_mergers)
+
+    mass_tuple=list(zip(BH_Mass1,BH_Mass2))
+    id_tuple=list(zip(ID1,ID2))
+
+        #primary_mass=numpy.array([numpy.amax([dat[0],dat[1]]) for dat in mass_tuple])
+        #secondary_mass=numpy.array([numpy.amin([dat[0],dat[1]]) for dat in mass_tuple])
+
+    primary_index=numpy.array([numpy.argmax([dat[0],dat[1]]) for dat in mass_tuple])
+    secondary_index=numpy.array([numpy.argmin([dat[0],dat[1]]) for dat in mass_tuple])
+
+    primary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,primary_index))])
+    secondary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,secondary_index))])
+
+    primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
+    secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
+    
+    Time_sorted=sort_X_based_on_Y(Time,Time)
+    primary_mass_sorted=sort_X_based_on_Y(primary_mass,Time)
+    secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,Time)
+    primary_id_sorted=sort_X_based_on_Y(primary_id,Time)
+    secondary_id_sorted=sort_X_based_on_Y(secondary_id,Time)
+    TaskID_sorted=sort_X_based_on_Y(TaskID,Time)
+    return Time_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,TaskID_sorted,0
+
+def get_blackhole_history_high_res(output_path,desired_id,mergers_from_snapshot=0):
     def parse_id_col(BH_ids_as_string):
         return numpy.int(BH_ids_as_string[3:])
     vec_parse_id_col=numpy.vectorize(parse_id_col)
@@ -604,8 +674,10 @@ def get_blackhole_history_high_res(output_path,desired_id):
     rhos_for_id=numpy.array([])
     sound_speeds_for_id=numpy.array([])
     
-    
-    merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete=get_merger_events(output_path)
+    if (mergers_from_snapshot):
+        merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events_from_snapshot(output_path,0)
+    else:
+        merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events(output_path)
     extract_events_as_secondary_BH=secondary_id==desired_id
     extract_events_as_primary_BH=primary_id==desired_id
     merging_partner_ids=numpy.append(primary_id[extract_events_as_secondary_BH],secondary_id[extract_events_as_primary_BH])    
@@ -637,7 +709,71 @@ def get_blackhole_history_high_res(output_path,desired_id):
     return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
 
 
-def get_blackhole_history_high_res_all_progenitors(output_path,desired_id):
+def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0):
+    def parse_id_col(BH_ids_as_string):
+        return numpy.int(BH_ids_as_string[3:])
+    vec_parse_id_col=numpy.vectorize(parse_id_col)
+    
+    output_file_names=os.listdir(output_path+'blackhole_details/')
+
+    BH_ids_for_id=numpy.array([],dtype=int)
+    scale_factors_for_id=numpy.array([])
+    BH_masses_for_id=numpy.array([])
+    BH_mdots_for_id=numpy.array([])
+    rhos_for_id=numpy.array([])
+    sound_speeds_for_id=numpy.array([])
+    
+    try:
+        total_desired_ids,merging_times=get_progenitors_and_descendants(output_path,desired_id,mergers_from_snapshot=mergers_from_snapshot)
+    except:
+    #if(1==1):
+        merging_times=[]
+        total_desired_ids=[desired_id]
+    ii=0
+    for output_file_name in output_file_names[:]:
+        if ('blackhole_details' in output_file_name):
+            print(ii)
+            ii+=1
+            try:
+                if use_cleaned:
+                    full_data=numpy.loadtxt(output_path+'blackhole_details_cleaned/'+output_file_name,dtype='str')
+                else:
+                    full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
+            except:
+                
+                try:
+                    print("Last row missing in ",output_file_name)
+                    full_data=numpy.genfromtxt(output_path+'blackhole_details/'+output_file_name,dtype='str',skip_footer=1)
+                except:
+                    print("Failed completely",output_file_name)
+                    continue
+            try:     
+                BH_ids=vec_parse_id_col(full_data[:,0])
+                scale_factors=(full_data[:,1]).astype('float')
+                BH_masses=(full_data[:,2]).astype('float')
+                BH_mdots=(full_data[:,3]).astype('float')
+                rhos=(full_data[:,4]).astype('float')
+                sound_speeds=(full_data[:,5]).astype('float')
+
+                final_extract=numpy.array([False]*len(sound_speeds))
+                if (len(total_desired_ids)>0):
+                    for d_id in total_desired_ids:
+                        extract_id=(d_id==BH_ids)
+                        final_extract=final_extract+extract_id
+                #print(len(BH_ids),len(BH_ids[extract_id]))
+                BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
+                scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
+                BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
+                BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
+                rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
+                sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
+            except:
+                aa=1
+            
+    return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
+
+
+def get_blackhole_history_high_res_all_progenitors_v2(output_path,desired_id):
     def parse_id_col(BH_ids_as_string):
         return numpy.int(BH_ids_as_string[3:])
     vec_parse_id_col=numpy.vectorize(parse_id_col)
@@ -685,14 +821,17 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id):
                 BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
                 rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
                 sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
-            except:
+            except ValueError:
                 aa=1
             
     return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
 
+
+
+
         
         
-def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100):
+def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100,mergers_from_snapshot=0):
 
     BH_ids_for_id=numpy.array([],dtype=int)
     scale_factors_for_id=numpy.array([])
@@ -700,8 +839,10 @@ def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100):
     BH_mdots_for_id=numpy.array([])
     rhos_for_id=numpy.array([])
     sound_speeds_for_id=numpy.array([])
-    merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events(output_path)
-
+    if (mergers_from_snapshot):
+        merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events_from_snapshot(output_path,0)
+    else:
+        merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events(output_path)
     progenitor_ids=numpy.array([desired_id],dtype=int)
     final_merging_times=numpy.array([])
     progenitor_ids_before_update=numpy.array([],dtype=int)
@@ -1038,7 +1179,23 @@ def median_plot(x,y,xscl,yscl,nbins):
     y_space_med=[numpy.median(y[(x>x_space[i])&(x<x_space[i+1])]) for i in range(0,len(x_space)-1)]
     x_space_med=[(x_space[i]+x_space[i+1])/2 for i in range(0,len(x_space)-1)]
     return x_space_med,y_space_med
-    
+
+def get_median_with_IQR(x,y,xscl,yscl,nbins,percentile):
+    if(yscl==True):
+        y=log10(y)
+    if(xscl==True):
+        x=log10(x)
+    x_space=numpy.linspace(numpy.amin(x),numpy.amax(x),nbins)
+    y_space_med=[numpy.median(y[(x>x_space[i])&(x<x_space[i+1])]) for i in range(0,len(x_space)-1)]
+    y_space_IQR=[get_IQR(y[(x>x_space[i])&(x<x_space[i+1])],percentile) for i in range(0,len(x_space)-1)]
+    x_space_med=[(x_space[i]+x_space[i+1])/2 for i in range(0,len(x_space)-1)]
+    return numpy.array(x_space_med),numpy.array(y_space_med),numpy.array(y_space_IQR)
+
+def get_IQR(dist,percentile):
+    if (len(dist)>0):
+        return numpy.percentile(dist, percentile) - numpy.percentile(dist, 100.-percentile)
+    else:
+        return 0
     
     
     
@@ -1114,7 +1271,59 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
     return bin_centers,mass_distribution,mass_density
         
         
-        
+def find_closest_BH(position,All_Coordinates,All_IDs,matching_range):
+    length_space=numpy.linspace(0,matching_range,matching_range)
+    xpos,ypos,zpos=position
+    found=0
+    for cube_length in length_space:
+        xcoordinates=All_Coordinates[:,0]
+        ycoordinates=All_Coordinates[:,1]
+        zcoordinates=All_Coordinates[:,2]
+
+        maskx=(xcoordinates<=xpos+cube_length/2)&(xcoordinates>=xpos-cube_length/2)
+        masky=(ycoordinates<=ypos+cube_length/2)&(ycoordinates>=ypos-cube_length/2)
+        maskz=(zcoordinates<=zpos+cube_length/2)&(zcoordinates>=zpos-cube_length/2)
+
+        mask=(maskx&masky)&maskz
+        if (len(All_IDs[mask])==1):
+            found=1
+            break
+    if found:
+        return cube_length,All_IDs[mask][0]
+    else:        #print(position)
+        return -1,-1
+    
+def intersectnd(A,B):
+    A_string=[(str(a[0])+'_'+str(a[1]))for a in A]
+    B_string =[(str(b[0])+'_'+str(b[1]))for b in B]
+    return (numpy.array([AB.split('_') for AB in numpy.intersect1d(A_string,B_string)])).astype(int)
+
+def match_the_blackholes(basePath1,basePath2, desired_redshift,matching_range):
+    p_type=5
+    Coordinates1,output_redshift=get_particle_property(basePath1,'Coordinates',p_type,desired_redshift,list_all=False)
+    ID1,output_redshift=get_particle_property(basePath1,'ParticleIDs',p_type,desired_redshift,list_all=False)    
+    print("No of black holes",len(Coordinates1))
+    
+    Coordinates2,output_redshift=get_particle_property(basePath2,'Coordinates',p_type,desired_redshift,list_all=False)
+    ID2,output_redshift=get_particle_property(basePath2,'ParticleIDs',p_type,desired_redshift,list_all=False)    
+    print("No of black holes",len(Coordinates2))
+    
+
+
+    combined_data=numpy.transpose(numpy.array([find_closest_BH(position,Coordinates2,ID2,matching_range) for position in Coordinates1]))
+    distances_1to2=combined_data[0]
+    matchedIDs_1to2=combined_data[1].astype(int)
+    combined_data=numpy.transpose(numpy.array([find_closest_BH(position,Coordinates1,ID1,matching_range) for position in Coordinates2]))
+    distances_2to1=combined_data[0]
+    matchedIDs_2to1=combined_data[1].astype(int)
+    
+    matched_ID_tuple_1to2=numpy.transpose(numpy.array([ID1,matchedIDs_1to2]))
+    matched_ID_tuple_2to1=numpy.transpose(numpy.array([matchedIDs_2to1,ID2]))
+    
+    matched_pairs=intersectnd(matched_ID_tuple_1to2,matched_ID_tuple_2to1)
+    print("no. of matched pairs:", len(matched_pairs)) 
+          
+    return matched_pairs,matchedIDs_1to2,matchedIDs_2to1,ID1,ID2     
         
         
         
