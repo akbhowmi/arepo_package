@@ -117,7 +117,7 @@ def get_particle_property(output_path,particle_property,p_type,desired_redshift,
 #    if (list_all):
 #        print('Below are the list of properties for ptype ',p_type)
 #        print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
-    return il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property)[:],output_redshift
+    return il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property),output_redshift
 
 
 
@@ -369,45 +369,11 @@ def get_dark_matter_correlation_function_zoom(output_path,input_redshift,NBINS, 
 
 
 
-def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all)
-    if (list_all):
-        print('Below are the list of properties for ptype ',p_type)
-        print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
-    
-    requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
-
-    if (group_type=='groups'):              
-        group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
-        group_lengths=group_lengths[:,p_type] 
-        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
-    elif (group_type=='subhalo'):              
-        group_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift,list_all=False))
-        group_lengths=group_lengths[:,p_type] 
-        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
-    else:
-        print("Error:Unidentified group type")
-        return
-    return requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]],output_redshift
-
-def get_particle_property_within_groups_revised(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all)
-    if (list_all):
-        print('Below are the list of properties for ptype ',p_type)
-        print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
-    if (group_type=='groups'):              
-        requested_property=il.snapshot.loadHalo(output_path,output_snapshot,subhalo_index,p_type)[particle_property]
-
-    if (group_type=='Subhalo'):              
-        requested_property=il.snapshot.loadSubhalo(output_path,output_snapshot,subhalo_index,p_type)[particle_property]
-    return requested_property,output_redshift
-
 
 
 
 
 def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
-
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
     requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property)
     #requested_property_parent_group=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
