@@ -105,13 +105,19 @@ def get_subhalo_property(output_path,subhalo_property,desired_redshift,list_all=
         print(subhalos.keys())
     return subhalos.get(subhalo_property),output_redshift
 
-def get_particle_property(output_path,particle_property,p_type,desired_redshift,list_all=True):
+def get_particle_property_old(output_path,particle_property,p_type,desired_redshift,list_all=True):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all)
     if (list_all):
         print('Below are the list of properties for ptype ',p_type)
         print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
     return il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property],output_redshift
 
+def get_particle_property(output_path,particle_property,p_type,desired_redshift,list_all=True):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all)
+#    if (list_all):
+#        print('Below are the list of properties for ptype ',p_type)
+#        print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
+    return il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property)[:],output_redshift
 
 
 
