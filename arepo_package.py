@@ -409,7 +409,7 @@ def get_particle_property_within_groups_revised(output_path,particle_property,p_
 def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
 
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
-    requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
+    requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property)
     #requested_property_parent_group=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
     
 
