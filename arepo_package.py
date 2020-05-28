@@ -113,6 +113,48 @@ def get_particle_property(output_path,particle_property,p_type,desired_redshift,
     return il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property),output_redshift
 
 
+def get_effective_zoom_volume(basePath,desired_redshift,levelmax):
+    mpc_to_kpc=1000.
+    Potential,output_redshift=get_particle_property(basePath,'Potential',1,desired_redshift)
+    number_of_DM_particles=len(Potential)
+    simulation_volume=(get_box_size(basePath)/mpc_to_kpc)**3
+    effective_volume=number_of_DM_particles*simulation_volume/(2.**(levelmax))**3
+    #print(number_of_DM_particles,(2.**(levelmax))**3)
+    return effective_volume,simulation_volume
+    #return 1,1
+    
+def mass_counts(HM,Nbins,log_HM_min,log_HM_max,linear=0):
+    def extract(HM_min,HM_max):
+        mask=(HM>HM_min)&(HM<HM_max)
+        return (HM_min+HM_max)/2,len(HM[mask])
+    if (linear):
+        HM_bin=numpy.linspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
+    else:
+        HM_bin=numpy.logspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
+    out=[extract(HM_bin[i],HM_bin[i+1]) for i in range(0,len(HM_bin)-1)]
+    #return out
+    centers=numpy.array(list(zip(*out))[0])
+    counts=numpy.array(list(zip(*out))[1])
+    dM=centers*numpy.diff(numpy.log(centers))[0]
+    HMF=counts/dM
+    dHMF=numpy.sqrt(counts)/dM
+    return centers,HMF,dHMF
+
+
+def get_mass_function_for_zoom(basePath,levelmax,desired_redshift,logmassmin,logmassmax):
+    effective_volume,simulation_volume=get_effective_zoom_volume(basePath,desired_redshift,levelmax)
+    print(effective_volume)
+
+
+    p_type=5
+    BHMass,output_redshift=get_particle_property(basePath,'BH_Mass',p_type,desired_redshift)
+    BHMass*=1e10
+
+
+    M,MF,dMF=mass_counts(BHMass,20,logmassmin,logmassmax)
+    return M,MF/effective_volume,dMF/effective_volume
+
+
 
 def mass_function(HM,box_size,Nbins,log_HM_min,log_HM_max):
     box_size_Mpc=box_size/1000.
@@ -674,7 +716,7 @@ def get_blackhole_history_high_res(output_path,desired_id,mergers_from_snapshot=
     return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
 
 
-def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0):
+def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0,get_all_blackhole_history=0):
     def parse_id_col(BH_ids_as_string):
         return numpy.int(BH_ids_as_string[3:])
     vec_parse_id_col=numpy.vectorize(parse_id_col)
@@ -726,6 +768,8 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,merger
                         extract_id=(d_id==BH_ids)
                         final_extract=final_extract+extract_id
                 #print(len(BH_ids),len(BH_ids[extract_id]))
+                if (get_all_blackhole_history==1):
+                    final_extract=BH_ids==BH_ids
                 BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
                 scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
                 BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
