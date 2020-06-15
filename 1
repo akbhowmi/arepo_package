@@ -91,19 +91,26 @@ def make_cuts(quantities,cut): #selects an array of quantities (argument 1) and 
 
 def get_group_property(output_path,group_property,desired_redshift,list_all=True):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
-    property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
-   # if (list_all):
-   #     print('Below are the list of properties')
-   #     print(halos.keys())
-    return property,output_redshift
+    halos = il.groupcat.loadHalos(output_path,output_snapshot,fields=None)
+    if (list_all):
+        print('Below are the list of properties')
+        print(halos.keys())
+    return halos.get(group_property),output_redshift
 
 def get_subhalo_property(output_path,subhalo_property,desired_redshift,list_all=True):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)      
-    property = il.groupcat.loadSubhalos(output_path,output_snapshot,fields=subhalo_property)
-#    if (list_all):
-#        print('Below are the list of properties')
-#        print(subhalos.keys())
-    return property,output_redshift
+    subhalos = il.groupcat.loadSubhalos(output_path,output_snapshot,fields=None)
+    if (list_all):
+        print('Below are the list of properties')
+        print(subhalos.keys())
+    return subhalos.get(subhalo_property),output_redshift
+
+def get_particle_property_old(output_path,particle_property,p_type,desired_redshift,list_all=True):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all)
+    if (list_all):
+        print('Below are the list of properties for ptype ',p_type)
+        print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
+    return il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property],output_redshift
 
 def get_particle_property(output_path,particle_property,p_type,desired_redshift,list_all=True):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all)
@@ -111,62 +118,6 @@ def get_particle_property(output_path,particle_property,p_type,desired_redshift,
 #        print('Below are the list of properties for ptype ',p_type)
 #        print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
     return il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property),output_redshift
-
-
-#def get_effective_zoom_volume(basePath,desired_redshift,levelmax):
-#    mpc_to_kpc=1000.
-#    Potential,output_redshift=get_particle_property(basePath,'Potential',1,desired_redshift)
-#    number_of_DM_particles=len(Potential)
-#    simulation_volume=(get_box_size(basePath)/mpc_to_kpc)**3
-#    effective_volume=number_of_DM_particles*simulation_volume/(2.**(levelmax))**3
-    #print(number_of_DM_particles,(2.**(levelmax))**3)
-#    return effective_volume,simulation_volume
-
-def get_effective_zoom_volume(basePath,desired_redshift,levelmax):
-    mpc_to_kpc=1000.
-    DM_particle_mass=load_snapshot_header(basePath,desired_redshift)['MassTable'][1]
-    SubfindDMDensity,output_redshift=get_particle_property(basePath,'SubfindDMDensity',1,desired_redshift)
-    DM_Volumes=DM_particle_mass/SubfindDMDensity
-    simulation_volume=(get_box_size(basePath)/mpc_to_kpc)**3
-    effective_volume=sum(DM_Volumes)/mpc_to_kpc**3
-    #print(number_of_DM_particles,(2.**(levelmax))**3)
-    return effective_volume,simulation_volume
-    #return 1,1
-    
-def mass_counts(HM,Nbins,log_HM_min,log_HM_max,linear=0):
-    def extract(HM_min,HM_max):
-        mask=(HM>HM_min)&(HM<HM_max)
-        return (HM_min+HM_max)/2,len(HM[mask])
-    if (linear):
-        HM_bin=numpy.linspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
-    else:
-        HM_bin=numpy.logspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
-    out=[extract(HM_bin[i],HM_bin[i+1]) for i in range(0,len(HM_bin)-1)]
-    #return out
-    centers=numpy.array(list(zip(*out))[0])
-    counts=numpy.array(list(zip(*out))[1])
-    dM=centers*numpy.diff(numpy.log(centers))[0]
-    HMF=counts/dM
-    dHMF=numpy.sqrt(counts)/dM
-    return centers,HMF,dHMF
-
-
-def get_mass_function_for_zoom(basePath,levelmax,desired_redshift,particle_property,logmassmin,logmassmax):
-    
-    
-    effective_volume,simulation_volume=get_effective_zoom_volume(basePath,desired_redshift,levelmax)
-    print("Efective volume in levelmax %d:"%levelmax,effective_volume)
-
-
-    p_type=5
-    
-    
-    BHMass,output_redshift=get_particle_property(basePath,particle_property,p_type,desired_redshift)
-    #if (particle_property=='BH_Mass'):
-    BHMass*=1e10
-    
-    M,MF,dMF=mass_counts(BHMass,20,logmassmin,logmassmax)
-    return M,MF/effective_volume,dMF/effective_volume
 
 
 
@@ -218,31 +169,6 @@ def get_distribution(quantity,Nbins,minimum,maximum,boxsize,min_count):
     right_edge=numpy.amin(centers[(counts<min_count)&(centers>mode)])
     
     return centers,counts,left_edge,right_edge
-
-
-def get_probability_density(HM,Nbins,log_HM_min,log_HM_max,linear=0):
-    #print(HM)
-    
-    def extract(HM_min,HM_max):
-        mask=(HM>HM_min)&(HM<HM_max)
-        return (HM_min+HM_max)/2,len(HM[mask])
-    if (linear):
-        HM_bin=numpy.linspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
-    else:
-        HM_bin=numpy.logspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
-    out=[extract(HM_bin[i],HM_bin[i+1]) for i in range(0,len(HM_bin)-1)]
-    #return out
-    centers=numpy.array(list(zip(*out))[0])
-    counts=numpy.array(list(zip(*out))[1])
-    counts_sum=numpy.sum(counts)
-    
-    HMF=counts
-    dHMF=numpy.sqrt(counts)
-    if (linear):
-        norm=numpy.diff(centers)[0]
-    else:
-        norm=1
-    return centers,HMF/norm,dHMF/norm,norm,counts
 
 
 
@@ -578,129 +504,6 @@ def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,scaled_ha
 def sort_X_based_on_Y(X,Y):
     return numpy.array([x for _,x in sorted(zip(Y,X))])
 
-def get_seeding_events(output_path):
-
-    output_file_names=os.listdir(output_path+'blackhole_seeding/')
-    snapshot_space=[]
-    redshift_space=[]
-
-    file_id_complete=numpy.array([],dtype=int)
-    scale_fac_complete=numpy.array([])
-    BH_id_complete=numpy.array([],dtype=int)
-    metallicity_complete=numpy.array([])
-    SFR_complete=numpy.array([])
-    density_complete=numpy.array([])
-    FOFDMmass_complete=numpy.array([])
-    indexmaxdens_complete=numpy.array([],dtype=int)
-    FOFTask_complete=numpy.array([],dtype=int)
-    #BH_mass2_complete=numpy.array([])
-
-    N_empty=0
-
-    for name in output_file_names[:]:
-        data=numpy.loadtxt(output_path+'blackhole_seeding/'+name)
-
-        try:
-        #for ii in [1]:
-            if (data.shape==(9,)):
-                file_id=numpy.array([data[0].astype(int)])
-                scale_fac=numpy.array([data[1]])
-                BH_id=numpy.array([data[2].astype(int)])
-                density=numpy.array([data[3]])
-                metallicity=numpy.array([data[4]])
-                SFR=numpy.array([data[5]])
-                FOFDMmass=numpy.array([data[6]])
-                indexmaxdens=numpy.array([data[7].astype(int)])
-                FOFTask=numpy.array([data[8].astype(int)])
-            else:    
-                file_id=data[:,0].astype(int)
-                scale_fac=data[:,1]
-                BH_id=data[:,2].astype(int)
-                density=data[:,3]    
-                metallicity=data[:,4]
-                SFR=data[:,5]
-                FOFDMmass=data[:,6]
-                indexmaxdens=data[:,7].astype(int)
-                FOFTask=data[:,8].astype(int)
-                
-            #print(
-
-            file_id_complete=numpy.append(file_id_complete,file_id)
-            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
-            BH_id_complete=numpy.append(BH_id_complete,BH_id)
-            #BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
-            metallicity_complete=numpy.append(metallicity_complete,metallicity)
-            SFR_complete=numpy.append(SFR_complete,SFR) 
-            density_complete=numpy.append(density_complete,density)
-            FOFDMmass_complete=numpy.append(FOFDMmass_complete,FOFDMmass)
-            indexmaxdens_complete=numpy.append(indexmaxdens_complete,indexmaxdens)
-            FOFTask_complete=numpy.append(FOFTask_complete,FOFTask)
-        except IndexError:
-            N_empty+=1
-            aaa=1
-            print('Index err:', name)
-    
-    return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,FOFTask_complete, file_id_complete,N_empty
-
-def get_seeding_events2(output_path):
-
-    output_file_names=os.listdir(output_path+'blackhole_seeding2/')
-    snapshot_space=[]
-    redshift_space=[]
-
-    file_id_complete=numpy.array([],dtype=int)
-    scale_fac_complete=numpy.array([])
-    BH_id_complete=numpy.array([],dtype=int)
-    metallicity_complete=numpy.array([])
-    SFR_complete=numpy.array([])
-    density_complete=numpy.array([])
-    FOFDMmass_complete=numpy.array([])
-    indexmaxdens_complete=numpy.array([],dtype=int)
-    #BH_mass2_complete=numpy.array([])
-
-    N_empty=0
-
-    for name in output_file_names[:]:
-        data=numpy.loadtxt(output_path+'blackhole_seeding2/'+name)
-
-        try:
-        #for ii in [1]:
-            if (data.shape==(8,)):
-                file_id=numpy.array([data[0].astype(int)])
-                scale_fac=numpy.array([data[1]])
-                BH_id=numpy.array([data[2].astype(int)])
-                density=numpy.array([data[3]])
-                metallicity=numpy.array([data[4]])
-                SFR=numpy.array([data[5]])
-                FOFDMmass=numpy.array([data[6]])
-                indexmaxdens=numpy.array([data[7].astype(int)])
-            else:    
-                file_id=data[:,0].astype(int)
-                scale_fac=data[:,1]
-                BH_id=data[:,2].astype(int)
-                density=data[:,3]    
-                metallicity=data[:,4]
-                SFR=data[:,5]
-                FOFDMmass=data[:,6]
-                indexmaxdens=data[:,7].astype(int)
-                
-            #print(
-
-            file_id_complete=numpy.append(file_id_complete,file_id)
-            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
-            BH_id_complete=numpy.append(BH_id_complete,BH_id)
-            #BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
-            metallicity_complete=numpy.append(metallicity_complete,metallicity)
-            SFR_complete=numpy.append(SFR_complete,SFR) 
-            density_complete=numpy.append(density_complete,density)
-            FOFDMmass_complete=numpy.append(FOFDMmass_complete,FOFDMmass)
-            indexmaxdens_complete=numpy.append(indexmaxdens_complete,indexmaxdens)
-        except IndexError:
-            N_empty+=1
-            aaa=1
-            print('Index err:', name)
-    
-    return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,N_empty
 
 def get_merger_events(output_path):
 
@@ -878,7 +681,7 @@ def get_blackhole_history_high_res(output_path,desired_id,mergers_from_snapshot=
     return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
 
 
-def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0,get_all_blackhole_history=0):
+def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0):
     def parse_id_col(BH_ids_as_string):
         return numpy.int(BH_ids_as_string[3:])
     vec_parse_id_col=numpy.vectorize(parse_id_col)
@@ -930,8 +733,6 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,merger
                         extract_id=(d_id==BH_ids)
                         final_extract=final_extract+extract_id
                 #print(len(BH_ids),len(BH_ids[extract_id]))
-                if (get_all_blackhole_history==1):
-                    final_extract=BH_ids==BH_ids
                 BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
                 scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
                 BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
