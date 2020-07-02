@@ -28,7 +28,14 @@ def get_snapshot_redshift_correspondence(output_path):
             redshift_space.append(redshift)   
     return numpy.array(snapshot_space),numpy.array(redshift_space)
 
-def get_bootstrap_error(sample,N_bootstrap,MODE):
+def periodic_distance(basePath,position1,position2):
+    boxsize=get_box_size(basePath)
+    diff1=numpy.abs(position1-position2)
+    diff2=numpy.abs(position1-position2+boxsize)
+    diff3=numpy.abs(position1-position2-boxsize)
+    distance_vec=numpy.amin(numpy.array([diff1,diff2,diff3]),axis=0)
+    return numpy.sqrt(numpy.sum(distance_vec*distance_vec))
+def get_bootstrap_error(sample,N_bootstrap,MODE,GET_CENTRAL=0):
     data=[]
     for i in range(0,N_bootstrap):        
         resample=numpy.random.choice(sample,size=sample.shape, replace=True)
@@ -36,7 +43,26 @@ def get_bootstrap_error(sample,N_bootstrap,MODE):
             data.append(numpy.average(resample))
         if (MODE=='median'):
             data.append(numpy.median(resample))
-    return numpy.std(data)
+    if (GET_CENTRAL):
+        return numpy.average(data),numpy.std(data)
+    else:
+        return numpy.std(data)
+
+
+def make_median_with_bootstrap(x_values,y_values,x_min,x_max,nbins,N_bootstrap):
+    x_space=numpy.linspace(x_min,x_max,nbins)
+    diff=numpy.diff(x_space)[0]
+    median_space=[]
+    err_space=[]
+    for x in x_space:
+        mask=(x_values>(x-diff/2)) & (x_values<(x+diff/2))
+        median,err=get_bootstrap_error(y_values[mask],N_bootstrap,'median',GET_CENTRAL=1)
+        median_space.append(median)
+        err_space.append(err)
+    median_space=numpy.array(median_space)
+    err_space=numpy.array(err_space)
+    return x_space,diff,median_space,err_space
+
 
 
 def get_box_size(output_path):
@@ -122,15 +148,24 @@ def get_particle_property(output_path,particle_property,p_type,desired_redshift,
     #print(number_of_DM_particles,(2.**(levelmax))**3)
 #    return effective_volume,simulation_volume
 
-def get_effective_zoom_volume(basePath,desired_redshift,levelmax):
+def get_effective_zoom_volume(basePath,desired_redshift,HighResGasFractionCut):
     mpc_to_kpc=1000.
-    DM_particle_mass=load_snapshot_header(basePath,desired_redshift)['MassTable'][1]
-    SubfindDMDensity,output_redshift=get_particle_property(basePath,'SubfindDMDensity',1,desired_redshift)
-    DM_Volumes=DM_particle_mass/SubfindDMDensity
+#    DM_particle_mass=load_snapshot_header(basePath,desired_redshift)['MassTable'][1]
+    ptype=0   
+    Masses,output_redshift=get_particle_property(basePath,'Masses', ptype, desired_redshift)
+    HighResGasMass,output_redshift=get_particle_property(basePath,'HighResGasMass', ptype, desired_redshift)
+    Density,output_redshift=get_particle_property(basePath,'Density', ptype, desired_redshift)
+    HighResGasFraction=HighResGasMass/Masses
+    high_res_particle_volume=Masses[HighResGasFraction>HighResGasFractionCut] / Density[HighResGasFraction>HighResGasFractionCut]
+    all_particle_volume=Masses / Density
     simulation_volume=(get_box_size(basePath)/mpc_to_kpc)**3
-    effective_volume=sum(DM_Volumes)/mpc_to_kpc**3
+    total_gas_volume=sum(all_particle_volume)/mpc_to_kpc**3
+ 
+    high_res_gas_volume=sum(high_res_particle_volume)/mpc_to_kpc**3
+
+
     #print(number_of_DM_particles,(2.**(levelmax))**3)
-    return effective_volume,simulation_volume
+    return high_res_gas_volume,total_gas_volume,simulation_volume,output_redshift
     #return 1,1
     
 def mass_counts(HM,Nbins,log_HM_min,log_HM_max,linear=0):
@@ -151,10 +186,10 @@ def mass_counts(HM,Nbins,log_HM_min,log_HM_max,linear=0):
     return centers,HMF,dHMF
 
 
-def get_mass_function_for_zoom(basePath,levelmax,desired_redshift,particle_property,logmassmin,logmassmax):
+def get_mass_function_for_zoom(basePath,levelmax,desired_redshift,particle_property,logmassmin,logmassmax,nbins,HighResGasFractionCut=0.1):
     
     
-    effective_volume,simulation_volume=get_effective_zoom_volume(basePath,desired_redshift,levelmax)
+    effective_volume,total_gas_volume,simulation_volume,output_redshift=get_effective_zoom_volume(basePath,desired_redshift,HighResGasFractionCut)
     print("Efective volume in levelmax %d:"%levelmax,effective_volume)
 
 
@@ -165,7 +200,7 @@ def get_mass_function_for_zoom(basePath,levelmax,desired_redshift,particle_prope
     #if (particle_property=='BH_Mass'):
     BHMass*=1e10
     
-    M,MF,dMF=mass_counts(BHMass,20,logmassmin,logmassmax)
+    M,MF,dMF=mass_counts(BHMass,nbins,logmassmin,logmassmax)
     return M,MF/effective_volume,dMF/effective_volume
 
 
@@ -242,7 +277,7 @@ def get_probability_density(HM,Nbins,log_HM_min,log_HM_max,linear=0):
         norm=numpy.diff(centers)[0]
     else:
         norm=1
-    return centers,HMF/norm,dHMF/norm,norm,counts
+    return centers,HMF/norm,dHMF/norm,norm,counts_sum
 
 
 
@@ -770,6 +805,84 @@ def get_merger_events(output_path):
     
     return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty
 
+
+def get_merger_events_hosts(output_path):
+
+    output_file_names=os.listdir(output_path+'blackhole_mergerhosts/')
+    snapshot_space=[]
+    redshift_space=[]
+
+    file_id_complete_host=numpy.array([],dtype=int)
+    scale_fac_complete_host=numpy.array([])
+
+    hosthalomass1_complete=numpy.array([])
+    hosthalomass2_complete=numpy.array([])
+    hosthalostellarmass1_complete=numpy.array([])
+    hosthalostellarmass2_complete=numpy.array([])
+    hosthalogasmass1_complete=numpy.array([])
+    hosthalogasmass2_complete=numpy.array([])
+    hosthalobhmass1_complete=numpy.array([])
+    hosthalobhmass2_complete=numpy.array([])
+    N_empty=0
+    for name in output_file_names[:]:
+        data=numpy.loadtxt(output_path+'blackhole_mergerhosts/'+name)
+
+        try:
+            if (data.shape==(10,)):
+                file_id=numpy.array([data[0].astype(int)])
+                scale_fac=numpy.array([data[1]])
+                hosthalomass1=numpy.array([data[2]])
+                hosthalostellarmass1=numpy.array([data[3]])
+                hosthalogasmass1=numpy.array([data[4]])
+                hosthalobhmass1=numpy.array([data[5]])
+                hosthalomass2=numpy.array([data[6]])
+                hosthalostellarmass2=numpy.array([data[7]])
+                hosthalogasmass2=numpy.array([data[8]])
+                hosthalobhmass2=numpy.array([data[9]])
+            else:
+                file_id=data[:,0].astype(int)
+                scale_fac=data[:,1]
+                hosthalomass1=data[:,2]
+                hosthalostellarmass1=data[:,3]
+                hosthalogasmass1=data[:,4]
+                hosthalobhmass1=data[:,5]
+                hosthalomass2=data[:,6]
+                hosthalostellarmass2=data[:,7]
+                hosthalogasmass2=data[:,8]
+                hosthalobhmass2=data[:,9]
+
+            file_id_complete_host=numpy.append(file_id_complete_host,file_id)
+            scale_fac_complete_host=numpy.append(scale_fac_complete_host,scale_fac)
+
+            hosthalomass1_complete=numpy.append(hosthalomass1_complete,hosthalomass1)
+            hosthalostellarmass1_complete=numpy.append(hosthalostellarmass1_complete,hosthalostellarmass1)    
+            hosthalogasmass1_complete=numpy.append(hosthalogasmass1_complete,hosthalogasmass1)
+            hosthalobhmass1_complete=numpy.append(hosthalobhmass1_complete,hosthalobhmass1)    
+
+            hosthalomass2_complete=numpy.append(hosthalomass2_complete,hosthalomass2)
+            hosthalostellarmass2_complete=numpy.append(hosthalostellarmass2_complete,hosthalostellarmass2)    
+            hosthalogasmass2_complete=numpy.append(hosthalogasmass2_complete,hosthalogasmass2)
+            hosthalobhmass2_complete=numpy.append(hosthalobhmass2_complete,hosthalobhmass2)    
+ 
+        except IndexError:
+            N_empty+=1
+            aaa=1
+
+    scale_fac_complete_host_sorted=sort_X_based_on_Y(scale_fac_complete_host,scale_fac_complete_host)
+    file_id_complete_host_sorted=sort_X_based_on_Y(file_id_complete_host,scale_fac_complete_host)
+ 
+    hosthalomass1_sorted=sort_X_based_on_Y(hosthalomass1_complete,scale_fac_complete_host)
+    hosthalostellarmass1_sorted=sort_X_based_on_Y(hosthalostellarmass1_complete,scale_fac_complete_host)
+    hosthalogasmass1_sorted=sort_X_based_on_Y(hosthalogasmass1_complete,scale_fac_complete_host)
+    hosthalobhmass1_sorted=sort_X_based_on_Y(hosthalobhmass1_complete,scale_fac_complete_host)
+
+    hosthalomass2_sorted=sort_X_based_on_Y(hosthalomass2_complete,scale_fac_complete_host)
+    hosthalostellarmass2_sorted=sort_X_based_on_Y(hosthalostellarmass2_complete,scale_fac_complete_host)
+    hosthalogasmass2_sorted=sort_X_based_on_Y(hosthalogasmass2_complete,scale_fac_complete_host)
+    hosthalobhmass2_sorted=sort_X_based_on_Y(hosthalobhmass2_complete,scale_fac_complete_host)
+    return scale_fac_complete_host_sorted,hosthalomass1_sorted,hosthalostellarmass1_sorted,hosthalogasmass1_sorted,hosthalobhmass1_sorted,hosthalomass2_sorted,hosthalostellarmass2_sorted,hosthalogasmass2_sorted,hosthalobhmass2_sorted,file_id_complete_host_sorted,N_empty
+
+
 def get_merger_events_from_snapshot(output_path,desired_redshift):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
     print(output_snapshot,output_redshift)
@@ -829,53 +942,65 @@ def get_merger_events_from_snapshot(output_path,desired_redshift):
     TaskID_sorted=sort_X_based_on_Y(TaskID,Time)
     return Time_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,TaskID_sorted,0
 
-def get_blackhole_history_high_res(output_path,desired_id,mergers_from_snapshot=0):
-    def parse_id_col(BH_ids_as_string):
-        return numpy.int(BH_ids_as_string[3:])
-    vec_parse_id_col=numpy.vectorize(parse_id_col)
-    
-    output_file_names=os.listdir(output_path+'blackhole_details/')
+                            
+def get_merger_events_from_snapshot(output_path,desired_redshift):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
+    print(output_snapshot,output_redshift)
+    tot_mergers=0
+    ID1=numpy.array([],dtype='uint64')
+    ID2=numpy.array([],dtype='uint64')
+    BH_Mass1=numpy.array([],dtype='float')
+    BH_Mass2=numpy.array([],dtype='float')
 
-    BH_ids_for_id=numpy.array([],dtype=int)
-    scale_factors_for_id=numpy.array([])
-    BH_masses_for_id=numpy.array([])
-    BH_mdots_for_id=numpy.array([])
-    rhos_for_id=numpy.array([])
-    sound_speeds_for_id=numpy.array([])
-    
-    if (mergers_from_snapshot):
-        merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events_from_snapshot(output_path,0)
-    else:
-        merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events(output_path)
-    extract_events_as_secondary_BH=secondary_id==desired_id
-    extract_events_as_primary_BH=primary_id==desired_id
-    merging_partner_ids=numpy.append(primary_id[extract_events_as_secondary_BH],secondary_id[extract_events_as_primary_BH])    
-    merging_times=numpy.append(merging_time[extract_events_as_secondary_BH],merging_time[extract_events_as_primary_BH])    
-    total_desired_ids=numpy.append(numpy.array([desired_id]),merging_partner_ids)
-    
-    for output_file_name in output_file_names[:]:
-        if ('blackhole_details' in output_file_name):
-            full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
-            BH_ids=vec_parse_id_col(full_data[:,0])
-            scale_factors=(full_data[:,1]).astype('float')
-            BH_masses=(full_data[:,2]).astype('float')
-            BH_mdots=(full_data[:,3]).astype('float')
-            rhos=(full_data[:,3]).astype('float')
-            sound_speeds=(full_data[:,3]).astype('float')
+    TaskID=numpy.array([],dtype='int')
+    Time=numpy.array([],dtype='float')
+    for i in range(0,16):
+        try:
+            if (output_snapshot>=10):
+                output_snapshot_str='%d'%output_snapshot
+            elif (output_snapshot<=9):
+                output_snapshot_str='0%d'%output_snapshot
+            print(output_snapshot_str)
+            g=h5py.File(output_path+'mergers_0%s/mergers_tab_0%s.%d.hdf5'%(output_snapshot_str,output_snapshot_str,i))
+            header=g['Header'].attrs
+            Merger=g.get('Merger')
+            print(list(Merger.keys()))
+            print(list(header))  
+            print("Number of mergers on File %d"%i,header.get('Nmergers_ThisFile'))
+            tot_mergers+=header.get('Nmergers_ThisFile')
+            ID1=numpy.append(ID1,Merger.get('ID1')[:])
+            ID2=numpy.append(ID2,Merger.get('ID2')[:])
+            BH_Mass1=numpy.append(BH_Mass1,Merger.get('BH_Mass1')[:])
+            BH_Mass2=numpy.append(BH_Mass2,Merger.get('BH_Mass2')[:])
+            TaskID=numpy.append(TaskID,Merger.get('TaskID')[:])
+            Time=numpy.append(Time,Merger.get('Time')[:])
+            #print(Merger.get('BH_mass1')[:])
+        except:
+            aa=1
+    print("Total number of mergers",tot_mergers)
 
-            final_extract=numpy.array([False]*len(sound_speeds))
-            for d_id in total_desired_ids:
-                extract_id=(d_id==BH_ids)
-                final_extract=final_extract+extract_id
-            #print(len(BH_ids),len(BH_ids[extract_id]))
-            BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
-            scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
-            BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
-            BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
-            rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
-            sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
-            
-    return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
+    mass_tuple=list(zip(BH_Mass1,BH_Mass2))
+    id_tuple=list(zip(ID1,ID2))
+
+        #primary_mass=numpy.array([numpy.amax([dat[0],dat[1]]) for dat in mass_tuple])
+        #secondary_mass=numpy.array([numpy.amin([dat[0],dat[1]]) for dat in mass_tuple])
+
+    primary_index=numpy.array([numpy.argmax([dat[0],dat[1]]) for dat in mass_tuple])
+    secondary_index=numpy.array([numpy.argmin([dat[0],dat[1]]) for dat in mass_tuple])
+
+    primary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,primary_index))])
+    secondary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,secondary_index))])
+
+    primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
+    secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
+    
+    Time_sorted=sort_X_based_on_Y(Time,Time)
+    primary_mass_sorted=sort_X_based_on_Y(primary_mass,Time)
+    secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,Time)
+    primary_id_sorted=sort_X_based_on_Y(primary_id,Time)
+    secondary_id_sorted=sort_X_based_on_Y(secondary_id,Time)
+    TaskID_sorted=sort_X_based_on_Y(TaskID,Time)
+    return Time_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,TaskID_sorted,0
 
 
 def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0,get_all_blackhole_history=0):
