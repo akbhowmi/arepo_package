@@ -482,7 +482,7 @@ def get_dark_matter_correlation_function_zoom(output_path,input_redshift,NBINS, 
 
 
 
-def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True):
+def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True,store_all_offsets=0):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
     requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property)
     #requested_property_parent_group=il.snapshot.loadSubset(output_path,output_snapshot,p_type)[particle_property]
@@ -495,7 +495,16 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
         group_lengths=group_lengths[:,p_type] 
         #print("Step3")
         #print(len(group_lengths))
-        group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
+        if (store_all_offsets==0):
+             group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
+        else:
+            if (os.path.exists(output_path+'/offsets_%d.npy'%p_type)):
+                group_offsets=numpy.load(output_path+'/offsets_%d.npy'%p_type)
+                print("offsets were already there")
+            else:
+                group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
+                numpy.save(output_path+'/offsets_%d.npy'%p_type,group_offsets)
+                print("Storing the offsets")
         #print("Step4")
         group_particles=requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]]
         #print("Step5")
@@ -737,7 +746,7 @@ def get_seeding_events2(output_path):
     
     return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,N_empty
 
-def get_merger_events(output_path):
+def get_merger_events(output_path,get_primary_secondary_indices=0):
 
     output_file_names=os.listdir(output_path+'blackhole_mergers/')
     snapshot_space=[]
@@ -802,8 +811,10 @@ def get_merger_events(output_path):
     primary_id_sorted=sort_X_based_on_Y(primary_id,scale_fac_complete)
     secondary_id_sorted=sort_X_based_on_Y(secondary_id,scale_fac_complete)
     file_id_complete_sorted=sort_X_based_on_Y(file_id_complete,scale_fac_complete)
-    
-    return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty
+    if get_primary_secondary_indices:
+        return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty,primary_index,secondary_index
+    else:
+        return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty
 
 
 def get_merger_events_hosts(output_path):
@@ -812,8 +823,13 @@ def get_merger_events_hosts(output_path):
     snapshot_space=[]
     redshift_space=[]
 
-    file_id_complete_host=numpy.array([],dtype=int)
-    scale_fac_complete_host=numpy.array([])
+    file_id_complete=numpy.array([],dtype=int)
+    scale_fac_complete=numpy.array([])
+
+    BH_id1_complete=numpy.array([],dtype=int)
+    BH_mass1_complete=numpy.array([])
+    BH_id2_complete=numpy.array([],dtype=int)
+    BH_mass2_complete=numpy.array([])
 
     hosthalomass1_complete=numpy.array([])
     hosthalomass2_complete=numpy.array([])
@@ -821,66 +837,86 @@ def get_merger_events_hosts(output_path):
     hosthalostellarmass2_complete=numpy.array([])
     hosthalogasmass1_complete=numpy.array([])
     hosthalogasmass2_complete=numpy.array([])
-    hosthalobhmass1_complete=numpy.array([])
-    hosthalobhmass2_complete=numpy.array([])
+    hosthalodmmass1_complete=numpy.array([])
+    hosthalodmmass2_complete=numpy.array([])
     N_empty=0
     for name in output_file_names[:]:
         data=numpy.loadtxt(output_path+'blackhole_mergerhosts/'+name)
 
         try:
-            if (data.shape==(10,)):
+            if (data.shape==(14,)):
                 file_id=numpy.array([data[0].astype(int)])
                 scale_fac=numpy.array([data[1]])
-                hosthalomass1=numpy.array([data[2]])
-                hosthalostellarmass1=numpy.array([data[3]])
-                hosthalogasmass1=numpy.array([data[4]])
-                hosthalobhmass1=numpy.array([data[5]])
-                hosthalomass2=numpy.array([data[6]])
-                hosthalostellarmass2=numpy.array([data[7]])
-                hosthalogasmass2=numpy.array([data[8]])
-                hosthalobhmass2=numpy.array([data[9]])
+                BH_id1=numpy.array([data[2].astype(int)])
+                BH_mass1=numpy.array([data[3]])
+                hosthalomass1=numpy.array([data[4]])
+                hosthalostellarmass1=numpy.array([data[5]])
+                hosthalogasmass1=numpy.array([data[6]])
+                hosthalodmmass1=numpy.array([data[7]])
+                BH_id2=numpy.array([data[8].astype(int)])
+                BH_mass2=numpy.array([data[9]])
+                hosthalomass2=numpy.array([data[10]])
+                hosthalostellarmass2=numpy.array([data[11]])
+                hosthalogasmass2=numpy.array([data[12]])
+                hosthalodmmass2=numpy.array([data[13]])
             else:
                 file_id=data[:,0].astype(int)
                 scale_fac=data[:,1]
-                hosthalomass1=data[:,2]
-                hosthalostellarmass1=data[:,3]
-                hosthalogasmass1=data[:,4]
-                hosthalobhmass1=data[:,5]
-                hosthalomass2=data[:,6]
-                hosthalostellarmass2=data[:,7]
-                hosthalogasmass2=data[:,8]
-                hosthalobhmass2=data[:,9]
+                BH_id1=data[:,2].astype(int)
+                BH_mass1=data[:,3]
+                hosthalomass1=data[:,4]
+                hosthalostellarmass1=data[:,5]
+                hosthalogasmass1=data[:,6]
+                hosthalodmmass1=data[:,7]
+                BH_id2=data[:,8].astype(int)
+                BH_mass2=data[:,9]
+                hosthalomass2=data[:,10]
+                hosthalostellarmass2=data[:,11]
+                hosthalogasmass2=data[:,12]
+                hosthalodmmass2=data[:,13]
 
-            file_id_complete_host=numpy.append(file_id_complete_host,file_id)
-            scale_fac_complete_host=numpy.append(scale_fac_complete_host,scale_fac)
+            file_id_complete=numpy.append(file_id_complete,file_id)
+            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
 
             hosthalomass1_complete=numpy.append(hosthalomass1_complete,hosthalomass1)
             hosthalostellarmass1_complete=numpy.append(hosthalostellarmass1_complete,hosthalostellarmass1)    
             hosthalogasmass1_complete=numpy.append(hosthalogasmass1_complete,hosthalogasmass1)
-            hosthalobhmass1_complete=numpy.append(hosthalobhmass1_complete,hosthalobhmass1)    
+            hosthalodmmass1_complete=numpy.append(hosthalodmmass1_complete,hosthalodmmass1)    
 
             hosthalomass2_complete=numpy.append(hosthalomass2_complete,hosthalomass2)
             hosthalostellarmass2_complete=numpy.append(hosthalostellarmass2_complete,hosthalostellarmass2)    
             hosthalogasmass2_complete=numpy.append(hosthalogasmass2_complete,hosthalogasmass2)
-            hosthalobhmass2_complete=numpy.append(hosthalobhmass2_complete,hosthalobhmass2)    
+            hosthalodmmass2_complete=numpy.append(hosthalodmmass2_complete,hosthalodmmass2)    
  
+            BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
+            BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)
+            BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
+            BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2)
+
+
+
         except IndexError:
             N_empty+=1
             aaa=1
 
-    scale_fac_complete_host_sorted=sort_X_based_on_Y(scale_fac_complete_host,scale_fac_complete_host)
-    file_id_complete_host_sorted=sort_X_based_on_Y(file_id_complete_host,scale_fac_complete_host)
- 
-    hosthalomass1_sorted=sort_X_based_on_Y(hosthalomass1_complete,scale_fac_complete_host)
-    hosthalostellarmass1_sorted=sort_X_based_on_Y(hosthalostellarmass1_complete,scale_fac_complete_host)
-    hosthalogasmass1_sorted=sort_X_based_on_Y(hosthalogasmass1_complete,scale_fac_complete_host)
-    hosthalobhmass1_sorted=sort_X_based_on_Y(hosthalobhmass1_complete,scale_fac_complete_host)
+    def fetch_primary_secondary(prop1,prop2,primary_index,secondary_index):
+        prop_tuple=list(zip(prop1,prop2))
+        primary_prop=numpy.array([prop_t[index] for (prop_t,index) in list(zip(prop_tuple,primary_index))])
+        secondary_prop=numpy.array([prop_t[index] for (prop_t,index) in list(zip(prop_tuple,secondary_index))])
+        return primary_prop,secondary_prop
 
-    hosthalomass2_sorted=sort_X_based_on_Y(hosthalomass2_complete,scale_fac_complete_host)
-    hosthalostellarmass2_sorted=sort_X_based_on_Y(hosthalostellarmass2_complete,scale_fac_complete_host)
-    hosthalogasmass2_sorted=sort_X_based_on_Y(hosthalogasmass2_complete,scale_fac_complete_host)
-    hosthalobhmass2_sorted=sort_X_based_on_Y(hosthalobhmass2_complete,scale_fac_complete_host)
-    return scale_fac_complete_host_sorted,hosthalomass1_sorted,hosthalostellarmass1_sorted,hosthalogasmass1_sorted,hosthalobhmass1_sorted,hosthalomass2_sorted,hosthalostellarmass2_sorted,hosthalogasmass2_sorted,hosthalobhmass2_sorted,file_id_complete_host_sorted,N_empty
+    mass_tuple=list(zip(BH_mass1_complete,BH_mass2_complete))
+    id_tuple=list(zip(BH_id1_complete,BH_id2_complete))
+    primary_index=numpy.array([numpy.argmax([dat[0],dat[1]]) for dat in mass_tuple])
+    secondary_index=numpy.array([numpy.argmin([dat[0],dat[1]]) for dat in mass_tuple])
+    BH_id_primary,BH_id_secondary=fetch_primary_secondary(BH_id1_complete, BH_id2_complete, primary_index, secondary_index)
+    BH_mass_primary,BH_mass_secondary=fetch_primary_secondary(BH_mass1_complete, BH_mass2_complete, primary_index, secondary_index)
+    hosthalomass_primary,hosthalomass_secondary=fetch_primary_secondary(hosthalomass1_complete, hosthalomass2_complete, primary_index, secondary_index)
+    hosthalodmmass_primary,hosthalodmmass_secondary=fetch_primary_secondary(hosthalodmmass1_complete, hosthalodmmass2_complete,primary_index, secondary_index)
+    hosthalogasmass_primary,hosthalogasmass_secondary=fetch_primary_secondary(hosthalogasmass1_complete, hosthalogasmass2_complete,primary_index, secondary_index)
+    hosthalostellarmass_primary,hosthalostellarmass_secondary=fetch_primary_secondary(hosthalostellarmass1_complete, hosthalostellarmass2_complete,primary_index, secondary_index)
+    hosthalodmmass_primary,hosthalodmmass_secondary=fetch_primary_secondary(hosthalodmmass1_complete, hosthalodmmass2_complete,primary_index, secondary_index)
+    return scale_fac_complete,BH_id_primary,BH_mass_primary,hosthalomass_primary,hosthalostellarmass_primary,hosthalogasmass_primary,hosthalodmmass_primary,BH_id_secondary,BH_mass_secondary,hosthalomass_secondary,hosthalostellarmass_secondary,hosthalogasmass_secondary,hosthalodmmass_secondary,file_id_complete
 
 
 def get_merger_events_from_snapshot(output_path,desired_redshift):
