@@ -1307,7 +1307,7 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
         indices_to_be_assigned=vec_find_index(complete_particle_ids_group_wise)
         
         group_ids[indices_to_be_assigned]=subhalo_index
-        print(len(group_ids[group_ids==-1]))
+        #print(len(group_ids[group_ids==-1]))
         if(len(group_ids[group_ids==-1])==0):
             break
     
