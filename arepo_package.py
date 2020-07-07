@@ -530,6 +530,8 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
         subhalo_indices=subhalo_indices[mask]  
         subhalo_final_indices=numpy.arange(0,len(subhalo_indices))
         group_particles=requested_property[group_offsets[desired_group_number]:group_offsets[desired_group_number]+group_lengths[desired_group_number]]   
+        
+        del requested_property
 
         #subhalo_indices=subhalo_indices[subhalo_group_number==desired_group_number]
         final_index=(subhalo_final_indices[subhalo_indices==subhalo_index])[0]
