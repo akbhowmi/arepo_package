@@ -58,5 +58,5 @@ for snap,index in zip(SnapNum_descendants,SubfindID_descendants):
         j=0
         i+=1
 
-plt.savefig(load_output_path+'/%s_index_%d_redshift_%.3f_image.png'%(run,subhalo_index,desired_redshift),bbox_inches='tight')
+plt.savefig(load_output_path+'/%s_index_%d_redshift_%.3f_image2.png'%(run,subhalo_index,desired_redshift),bbox_inches='tight')
 

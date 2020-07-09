@@ -156,7 +156,10 @@ def get_effective_zoom_volume(basePath,desired_redshift,HighResGasFractionCut):
     HighResGasMass,output_redshift=get_particle_property(basePath,'HighResGasMass', ptype, desired_redshift)
     Density,output_redshift=get_particle_property(basePath,'Density', ptype, desired_redshift)
     HighResGasFraction=HighResGasMass/Masses
+    print(HighResGasFractionCut)
+    print(HighResGasFraction[HighResGasFraction>HighResGasFractionCut])
     high_res_particle_volume=Masses[HighResGasFraction>HighResGasFractionCut] / Density[HighResGasFraction>HighResGasFractionCut]
+    print(high_res_particle_volume)
     all_particle_volume=Masses / Density
     simulation_volume=(get_box_size(basePath)/mpc_to_kpc)**3
     total_gas_volume=sum(all_particle_volume)/mpc_to_kpc**3
@@ -186,10 +189,13 @@ def mass_counts(HM,Nbins,log_HM_min,log_HM_max,linear=0):
     return centers,HMF,dHMF
 
 
-def get_mass_function_for_zoom(basePath,levelmax,desired_redshift,particle_property,logmassmin,logmassmax,nbins,HighResGasFractionCut=0.1):
+def get_mass_function_for_zoom(basePath,levelmax,desired_redshift,particle_property,logmassmin,logmassmax,nbins,HighResGasFractionCut=0.1,zoom_volume=1):
     
-    
-    effective_volume,total_gas_volume,simulation_volume,output_redshift=get_effective_zoom_volume(basePath,desired_redshift,HighResGasFractionCut)
+    if zoom_volume:
+        effective_volume,total_gas_volume,simulation_volume,output_redshift=get_effective_zoom_volume(basePath,desired_redshift,HighResGasFractionCut)
+    else:
+        effective_volume=(get_box_size(basePath)/1000)**3
+
     print("Efective volume in levelmax %d:"%levelmax,effective_volume)
 
 
@@ -201,6 +207,32 @@ def get_mass_function_for_zoom(basePath,levelmax,desired_redshift,particle_prope
     BHMass*=1e10
     
     M,MF,dMF=mass_counts(BHMass,nbins,logmassmin,logmassmax)
+    return M,MF/effective_volume,dMF/effective_volume
+
+
+def luminosity_counts(HM,Nbins,log_HM_min,log_HM_max):
+        def extract(HM_min,HM_max):
+            mask=(HM>HM_min)&(HM<HM_max)
+            #print len(HM[mask])
+            return (HM_min+HM_max)/2,len(HM[mask])
+
+        HM_bin=numpy.logspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
+        out=[extract(HM_bin[i],HM_bin[i+1]) for i in range(0,len(HM_bin)-1)]
+        centers=numpy.array(list(zip(*out))[0])
+        counts=numpy.array(list(zip(*out))[1])
+        #print counts
+        dlogM=numpy.diff(numpy.log10(centers))[0]
+        HMF=counts/dlogM
+        dHMF=numpy.sqrt(counts)/dlogM
+        return centers,HMF,dHMF
+
+def get_luminosity_function_for_zoom(basePath,levelmax,desired_redshift,Luminosities,logmassmin,logmassmax,nbins,HighResGasFractionCut=0.1,zoom_volume=1):
+    if (zoom_volume):
+        effective_volume,total_gas_volume,simulation_volume,output_redshift=get_effective_zoom_volume(basePath,desired_redshift,HighResGasFractionCut)
+    else:
+        effective_volume=(get_box_size(basePath)/1000)**3
+    print("Efective volume in levelmax %d:"%levelmax,effective_volume)
+    M,MF,dMF=luminosity_counts(Luminosities,nbins,logmassmin,logmassmax)
     return M,MF/effective_volume,dMF/effective_volume
 
 
@@ -1662,6 +1694,136 @@ def match_the_blackholes(basePath1,basePath2, desired_redshift,matching_range):
           
     return matched_pairs,matchedIDs_1to2,matchedIDs_2to1,ID1,ID2     
         
+    
+def get_sublink_progenitors(basePath,subhalo_index,desired_redshift):    
+    class Subhalo:
+        def __init__(self):
+            self.Index=-1
+            self.MostMassiveProgenitor = -1
+            self.NextMostMassiveProgenitor = -1
+            self.Snap=-1 
+    #-----------------------------------------------------------------------------------------------------------------------
+    #----------------------------------This function fills up the progenitor tree------------------------------------------               
+    def function_fill_progenitor_tree(subhalo_index,currentsubhalo,current_subhalo_ID):
+        #print(current_subhalo_ID)
+        fetch_subhalo=current_subhalo_ID==SubhaloID_Tree
+        currentsubhalo.Index=SubfindID_Tree[fetch_subhalo][0]
+        currentsubhalo.Snap=SnapNum_Tree[fetch_subhalo][0]
+        MostMassiveProgenitorID=FirstProgenitorID_Tree[fetch_subhalo][0]
+        NextMostMassiveProgenitorID=NextProgenitorID_Tree[fetch_subhalo][0]
+
+        MostMassiveProgenitorIndex=SubfindID_Tree[MostMassiveProgenitorID==SubhaloID_Tree]
+        NextMostMassiveProgenitorIndex=SubfindID_Tree[NextMostMassiveProgenitorID==SubhaloID_Tree]
+
+
+        currentsubhalo.MostMassiveProgenitor=Subhalo()
+        currentsubhalo.NextMostMassiveProgenitor=Subhalo()
+
+
+        if (MostMassiveProgenitorID!=-1):
+            function_fill_progenitor_tree(MostMassiveProgenitorIndex,currentsubhalo.MostMassiveProgenitor,MostMassiveProgenitorID)
+        if (NextMostMassiveProgenitorID!=-1):
+            function_fill_progenitor_tree(NextMostMassiveProgenitorIndex,currentsubhalo.NextMostMassiveProgenitor,NextMostMassiveProgenitorID)    
+#        print("Found no more progenitors: returning to previous recursion")
+        return 
+
+    tree=h5py.File(basePath+'/postprocessing/tree_extended.hdf5','r')
+    save_output_path='/home/aklantbhowmick/Aklant/arepo_code_development/progenitor_outputs/'
+
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(basePath,desired_redshift)
+    print("The root subhalo is at the following redshift and snapshot:",output_redshift,output_snapshot)
+    SubfindID=tree.get('SubfindID')[:]
+    SubhaloID=tree.get('SubhaloID')[:]
+    FirstProgenitorID=tree.get('FirstProgenitorID')[:]
+    NextProgenitorID=tree.get('NextProgenitorID')[:]
+    TreeID=tree.get('TreeID')[:]
+    SnapNum=tree.get('SnapNum')[:]
+    
+    find_original_subhalo=(SubfindID==subhalo_index)&(SnapNum==output_snapshot)
+    if (len(SubfindID[find_original_subhalo])!=1):
+        print("Warning: The number of selected subhaloes must be 1")
+    Target_TreeID=TreeID[find_original_subhalo]
+    extract_tree=Target_TreeID==TreeID
+    SubhaloID_Tree=SubhaloID[extract_tree]
+    SnapNum_Tree=SnapNum[extract_tree]
+    FirstProgenitorID_Tree=FirstProgenitorID[extract_tree]
+    NextProgenitorID_Tree=NextProgenitorID[extract_tree]
+    SubfindID_Tree=SubfindID[extract_tree]
+
+    find_subhalo_on_tree=(SubfindID_Tree==subhalo_index)&(SnapNum_Tree==output_snapshot)
+    RootSubhaloID=SubhaloID_Tree[find_subhalo_on_tree][0]
+
+    sys.setrecursionlimit(1000)
+        
+    rootsubhalo = Subhalo()
+    function_fill_progenitor_tree(subhalo_index,rootsubhalo,RootSubhaloID)
+    return rootsubhalo
+
+def get_sublink_descendants(basePath,subhalo_index,desired_redshift):  
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(basePath,desired_redshift)
+    save_output_path='/home/aklantbhowmick/Aklant/arepo_code_development/descendant_outputs/'
+
+    tree=h5py.File(basePath+'/postprocessing/tree_extended.hdf5','r')
+    SubfindID=tree.get('SubfindID')[:]
+    SubhaloID=tree.get('SubhaloID')[:]
+    DescendantID=tree.get('DescendantID')[:]
+    TreeID=tree.get('TreeID')[:]
+    SnapNum=tree.get('SnapNum')[:]
+
+    find_original_subhalo=(SubfindID==subhalo_index)&(SnapNum==output_snapshot)
+    if (len(SubfindID[find_original_subhalo])!=1):
+        print("Warning: The number of selected subhaloes must be 1")
+    Target_TreeID=TreeID[find_original_subhalo]
+    extract_tree=Target_TreeID==TreeID
+    SubhaloID_Tree=SubhaloID[extract_tree]
+    SnapNum_Tree=SnapNum[extract_tree]
+    DescendantID_Tree=DescendantID[extract_tree]
+    SubfindID_Tree=SubfindID[extract_tree]
+    find_subhalo_on_tree=(SubfindID_Tree==subhalo_index)&(SnapNum_Tree==output_snapshot)
+
+    SubfindID_descendants=[SubfindID[find_original_subhalo][0]]
+    SnapNum_descendants=[SnapNum[find_original_subhalo][0]]
+    
+    MAX_ITERATIONS=100
+    i=0
+    Last_Snap_Num=200
+
+    while (i<MAX_ITERATIONS):
+        Subhalo_ID_tracking=DescendantID_Tree[find_subhalo_on_tree]
+        if (Subhalo_ID_tracking[0]==[-1]):
+            break
+        fetch_subhalo=SubhaloID_Tree==Subhalo_ID_tracking 
+        SubfindID_descendants.append(SubfindID_Tree[fetch_subhalo][0])
+        SnapNum_descendants.append(SnapNum_Tree[fetch_subhalo][0])
+        find_subhalo_on_tree=fetch_subhalo   
+        #print(i)
+        i+=1
+    return SubfindID_descendants,SnapNum_descendants
+
+def get_sublink_progenitors_most_massive_branch(basePath,root_subhalo_index,root_redshift):
+    rootsubhalo=get_sublink_progenitors(basePath,root_subhalo_index,root_redshift)
+    currentsubhalo=rootsubhalo
+    Progenitor_SubhaloIndices=[]
+    Progenitor_Snaps=[]
+    i=0
+    while (i<100):
+        Index=currentsubhalo.Index
+        Snap=currentsubhalo.Snap
+        currentsubhalo=currentsubhalo.MostMassiveProgenitor
+        if (Index==-1):
+            break
+        else:
+            Progenitor_Snaps.append(Snap)
+            Progenitor_SubhaloIndices.append(Index)
+        i+=1
+    Progenitor_Snaps=numpy.array(Progenitor_Snaps)
+    Progenitor_SubhaloIndices=numpy.array(Progenitor_SubhaloIndices)
+    return Progenitor_SubhaloIndices,Progenitor_Snaps
+
+
+
+    
+
         
         
         
