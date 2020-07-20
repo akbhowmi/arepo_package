@@ -1759,11 +1759,14 @@ def get_sublink_progenitors(basePath,subhalo_index,desired_redshift):
     function_fill_progenitor_tree(subhalo_index,rootsubhalo,RootSubhaloID)
     return rootsubhalo
 
-def get_sublink_descendants(basePath,subhalo_index,desired_redshift):  
+def get_sublink_descendants(basePath,subhalo_index,desired_redshift,TNG=0,path_to_TNG_trees='.'):  
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(basePath,desired_redshift)
 #	    save_output_path='/home/aklantbhowmick/Aklant/arepo_code_development/descendant_outputs/'
+    if (TNG==0):
+        tree=h5py.File(basePath+'/postprocessing/tree_extended.hdf5','r')
+    if (TNG==1):
+        tree=h5py.File(path_to_TNG_trees+'/tree_extended.hdf5','r')
 
-    tree=h5py.File(basePath+'/postprocessing/tree_extended.hdf5','r')
     SubfindID=tree.get('SubfindID')[:]
     SubhaloID=tree.get('SubhaloID')[:]
     DescendantID=tree.get('DescendantID')[:]
