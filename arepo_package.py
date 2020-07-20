@@ -156,16 +156,16 @@ def get_effective_zoom_volume(basePath,desired_redshift,HighResGasFractionCut):
     HighResGasMass,output_redshift=get_particle_property(basePath,'HighResGasMass', ptype, desired_redshift)
     Density,output_redshift=get_particle_property(basePath,'Density', ptype, desired_redshift)
     HighResGasFraction=HighResGasMass/Masses
-    print(HighResGasFractionCut)
-    print(HighResGasFraction[HighResGasFraction>HighResGasFractionCut])
+#    print(HighResGasFractionCut)
+#    print(HighResGasFraction[HighResGasFraction>HighResGasFractionCut])
     high_res_particle_volume=Masses[HighResGasFraction>HighResGasFractionCut] / Density[HighResGasFraction>HighResGasFractionCut]
-    print(high_res_particle_volume)
+#    print(high_res_particle_volume)
     all_particle_volume=Masses / Density
     simulation_volume=(get_box_size(basePath)/mpc_to_kpc)**3
     total_gas_volume=sum(all_particle_volume)/mpc_to_kpc**3
  
     high_res_gas_volume=sum(high_res_particle_volume)/mpc_to_kpc**3
-
+    print("Note: The high resolution gas volume is:",high_res_gas_volume)
 
     #print(number_of_DM_particles,(2.**(levelmax))**3)
     return high_res_gas_volume,total_gas_volume,simulation_volume,output_redshift
@@ -1761,7 +1761,7 @@ def get_sublink_progenitors(basePath,subhalo_index,desired_redshift):
 
 def get_sublink_descendants(basePath,subhalo_index,desired_redshift):  
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(basePath,desired_redshift)
-    save_output_path='/home/aklantbhowmick/Aklant/arepo_code_development/descendant_outputs/'
+#	    save_output_path='/home/aklantbhowmick/Aklant/arepo_code_development/descendant_outputs/'
 
     tree=h5py.File(basePath+'/postprocessing/tree_extended.hdf5','r')
     SubfindID=tree.get('SubfindID')[:]
