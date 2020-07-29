@@ -54,14 +54,17 @@ def make_median_with_bootstrap(x_values,y_values,x_min,x_max,nbins,N_bootstrap):
     diff=numpy.diff(x_space)[0]
     median_space=[]
     err_space=[]
+    IQR_space=[]
     for x in x_space:
         mask=(x_values>(x-diff/2)) & (x_values<(x+diff/2))
         median,err=get_bootstrap_error(y_values[mask],N_bootstrap,'median',GET_CENTRAL=1)
+        IQR_space.append(get_IQR(y_values[mask],75))
         median_space.append(median)
         err_space.append(err)
     median_space=numpy.array(median_space)
     err_space=numpy.array(err_space)
-    return x_space,diff,median_space,err_space
+    IQR_space=numpy.array(IQR_space)
+    return x_space,diff,median_space,err_space,IQR_space
 
 
 
@@ -1549,12 +1552,12 @@ def median_plot(x,y,xscl,yscl,nbins):
     x_space_med=[(x_space[i]+x_space[i+1])/2 for i in range(0,len(x_space)-1)]
     return x_space_med,y_space_med
 
-def get_median_with_IQR(x,y,xscl,yscl,nbins,percentile):
+def get_median_with_IQR(x,y,xscl,yscl,minx,maxx,nbins,percentile):
     if(yscl==True):
         y=log10(y)
     if(xscl==True):
         x=log10(x)
-    x_space=numpy.linspace(numpy.amin(x),numpy.amax(x),nbins)
+    x_space=numpy.linspace(minx,maxx,nbins)
     y_space_med=[numpy.median(y[(x>x_space[i])&(x<x_space[i+1])]) for i in range(0,len(x_space)-1)]
     y_space_IQR=[get_IQR(y[(x>x_space[i])&(x<x_space[i+1])],percentile) for i in range(0,len(x_space)-1)]
     x_space_med=[(x_space[i]+x_space[i+1])/2 for i in range(0,len(x_space)-1)]
