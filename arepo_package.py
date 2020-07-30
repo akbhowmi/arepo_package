@@ -9,7 +9,7 @@ import h5py
 import numpy
 import illustris_python as il
 import os
-from kdcount import correlate
+#from kdcount import correlate
 import scipy
 import matplotlib as mpl
 
