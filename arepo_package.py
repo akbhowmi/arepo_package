@@ -1827,7 +1827,27 @@ def get_sublink_progenitors_most_massive_branch(basePath,root_subhalo_index,root
     return Progenitor_SubhaloIndices,Progenitor_Snaps
 
 
+def trace_a_halo(basePath,halo_index_to_be_traced,initial_redshift,final_redshift):
+    SubhaloGrNr,o=get_subhalo_property(basePath,'SubhaloGrNr',initial_redshift)
+    SubhaloMass,o=get_subhalo_property(basePath,'SubhaloMass',initial_redshift)
+    SubhaloIndex=numpy.arange(0,len(SubhaloMass))
+    subhalo_index_to_be_traced=SubhaloIndex[SubhaloGrNr==halo_index_to_be_traced][0]
+    if (final_redshift<=initial_redshift):
+        subhalo_index_tree,snap_tree=get_sublink_descendants(basePath,subhalo_index_to_be_traced,initial_redshift)
+    else:
+        subhalo_index_tree,snap_tree=get_sublink_progenitors_most_massive_branch(basePath,subhalo_index_to_be_traced,initial_redshift)
 
+
+        
+    SubhaloGrNr,o=get_subhalo_property(basePath,'SubhaloGrNr',final_redshift)
+    snap_list,redshift_list=get_snapshot_redshift_correspondence(basePath)
+    final_snap=snap_list[redshift_list==o][0]
+
+    subhalo_index_tree=numpy.array(subhalo_index_tree)
+    final_subhalo_index=subhalo_index_tree[snap_tree==final_snap][0]
+
+    final_halo_index_to_be_traced=SubhaloGrNr[final_subhalo_index]
+    return final_halo_index_to_be_traced
     
 
         
