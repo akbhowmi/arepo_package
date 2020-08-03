@@ -786,50 +786,60 @@ def get_seeding_events2(output_path):
     
     return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,N_empty
 
-def get_merger_events(output_path,get_primary_secondary_indices=0):
-
-    output_file_names=os.listdir(output_path+'blackhole_mergers/')
-    snapshot_space=[]
-    redshift_space=[]
-
-    file_id_complete=numpy.array([],dtype=int)
-    scale_fac_complete=numpy.array([])
-
-    BH_id1_complete=numpy.array([],dtype=int)
-    BH_mass1_complete=numpy.array([])
-    BH_id2_complete=numpy.array([],dtype=int)
-    BH_mass2_complete=numpy.array([])
-
+def get_merger_events(output_path,get_primary_secondary_indices=0,HDF5=0):
     N_empty=0
+    if(HDF5):
+        print("Note: reading merger events from the post processed hdf5 files")
+        hf = h5py.File(output_path+'blackhole_mergers.hdf5')
+        file_id_complete=hf.get('FileID')[:]
+        scale_fac_complete=hf.get('ScaleFactor')[:]
+        BH_id1_complete=hf.get('BH_ID1')[:]
+        BH_mass1_complete=hf.get('BH_Mass1')[:]
+        BH_id2_complete=hf.get('BH_ID2')[:]
+        BH_mass2_complete=hf.get('BH_Mass2')[:]
+    else:
+        output_file_names=os.listdir(output_path+'blackhole_mergers/')
+        snapshot_space=[]
+        redshift_space=[]
 
-    for name in output_file_names[:]:
-        data=numpy.loadtxt(output_path+'blackhole_mergers/'+name)
+        file_id_complete=numpy.array([],dtype=int)
+        scale_fac_complete=numpy.array([])
 
-        try:
-            if (data.shape==(6,)):
-                file_id=numpy.array([data[0].astype(int)])
-                scale_fac=numpy.array([data[1]])
-                BH_id1=numpy.array([data[2].astype(int)])
-                BH_mass1=numpy.array([data[3]])
-                BH_id2=numpy.array([data[4].astype(int)])
-                BH_mass2=numpy.array([data[5]])                             
-            else:    
-                file_id=data[:,0].astype(int)
-                scale_fac=data[:,1]
-                BH_id1=data[:,2].astype(int)
-                BH_mass1=data[:,3]
-                BH_id2=data[:,4].astype(int)
-                BH_mass2=data[:,5]
+        BH_id1_complete=numpy.array([],dtype=int)
+        BH_mass1_complete=numpy.array([])
+        BH_id2_complete=numpy.array([],dtype=int)
+        BH_mass2_complete=numpy.array([])
 
-            file_id_complete=numpy.append(file_id_complete,file_id)
-            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
-            BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
-            BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
-            BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
-            BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2) 
-        except IndexError:
-            N_empty+=1
-            aaa=1
+        
+
+        for name in output_file_names[:]:
+            data=numpy.loadtxt(output_path+'blackhole_mergers/'+name)
+
+            try:
+                if (data.shape==(6,)):
+                    file_id=numpy.array([data[0].astype(int)])
+                    scale_fac=numpy.array([data[1]])
+                    BH_id1=numpy.array([data[2].astype(int)])
+                    BH_mass1=numpy.array([data[3]])
+                    BH_id2=numpy.array([data[4].astype(int)])
+                    BH_mass2=numpy.array([data[5]])                             
+                else:    
+                    file_id=data[:,0].astype(int)
+                    scale_fac=data[:,1]
+                    BH_id1=data[:,2].astype(int)
+                    BH_mass1=data[:,3]
+                    BH_id2=data[:,4].astype(int)
+                    BH_mass2=data[:,5]
+
+                file_id_complete=numpy.append(file_id_complete,file_id)
+                scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+                BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
+                BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
+                BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
+                BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2) 
+            except IndexError:
+                N_empty+=1
+                aaa=1
     mass_tuple=list(zip(BH_mass1_complete,BH_mass2_complete))
     id_tuple=list(zip(BH_id1_complete,BH_id2_complete))
 
@@ -857,87 +867,104 @@ def get_merger_events(output_path,get_primary_secondary_indices=0):
         return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty
 
 
-def get_merger_events_hosts(output_path):
+def get_merger_events_hosts(output_path,HDF5=0):
+    if (HDF5):
+        hf = h5py.File(output_path+'blackhole_mergerhosts.hdf5')
+        file_id_complete=hf.get('FileID')[:]
+        scale_fac_complete=hf.get('ScaleFactor')[:]
 
-    output_file_names=os.listdir(output_path+'blackhole_mergerhosts/')
-    snapshot_space=[]
-    redshift_space=[]
+        BH_id1_complete=hf.get('BH_ID1')[:]
+        BH_mass1_complete=hf.get('BH_Mass1')[:]
+        BH_id2_complete=hf.get('BH_ID2')[:]
+        BH_mass2_complete=hf.get('BH_Mass2')[:]
 
-    file_id_complete=numpy.array([],dtype=int)
-    scale_fac_complete=numpy.array([])
+        hosthalomass1_complete=hf.get('HostHaloMass1')[:]
+        hosthalostellarmass1_complete=hf.get('HostHaloStellarMass1')[:]
+        hosthalogasmass1_complete=hf.get('HostHaloGasMass1')[:]
+        hosthalodmmass1_complete=hf.get('HostHaloDMMass1')[:]
 
-    BH_id1_complete=numpy.array([],dtype=int)
-    BH_mass1_complete=numpy.array([])
-    BH_id2_complete=numpy.array([],dtype=int)
-    BH_mass2_complete=numpy.array([])
+        hosthalomass2_complete=hf.get('HostHaloMass2')[:]
+        hosthalostellarmass2_complete=hf.get('HostHaloStellarMass2')[:]
+        hosthalogasmass2_complete=hf.get('HostHaloGasMass2')[:]
+        hosthalodmmass2_complete=hf.get('HostHaloDMMass2')[:]
+    
+    else:
+        output_file_names=os.listdir(output_path+'blackhole_mergerhosts/')
+        snapshot_space=[]
+        redshift_space=[]
 
-    hosthalomass1_complete=numpy.array([])
-    hosthalomass2_complete=numpy.array([])
-    hosthalostellarmass1_complete=numpy.array([])
-    hosthalostellarmass2_complete=numpy.array([])
-    hosthalogasmass1_complete=numpy.array([])
-    hosthalogasmass2_complete=numpy.array([])
-    hosthalodmmass1_complete=numpy.array([])
-    hosthalodmmass2_complete=numpy.array([])
-    N_empty=0
-    for name in output_file_names[:]:
-        data=numpy.loadtxt(output_path+'blackhole_mergerhosts/'+name)
+        file_id_complete=numpy.array([],dtype=int)
+        scale_fac_complete=numpy.array([])
 
-        try:
-            if (data.shape==(14,)):
-                file_id=numpy.array([data[0].astype(int)])
-                scale_fac=numpy.array([data[1]])
-                BH_id1=numpy.array([data[2].astype(int)])
-                BH_mass1=numpy.array([data[3]])
-                hosthalomass1=numpy.array([data[4]])
-                hosthalostellarmass1=numpy.array([data[5]])
-                hosthalogasmass1=numpy.array([data[6]])
-                hosthalodmmass1=numpy.array([data[7]])
-                BH_id2=numpy.array([data[8].astype(int)])
-                BH_mass2=numpy.array([data[9]])
-                hosthalomass2=numpy.array([data[10]])
-                hosthalostellarmass2=numpy.array([data[11]])
-                hosthalogasmass2=numpy.array([data[12]])
-                hosthalodmmass2=numpy.array([data[13]])
-            else:
-                file_id=data[:,0].astype(int)
-                scale_fac=data[:,1]
-                BH_id1=data[:,2].astype(int)
-                BH_mass1=data[:,3]
-                hosthalomass1=data[:,4]
-                hosthalostellarmass1=data[:,5]
-                hosthalogasmass1=data[:,6]
-                hosthalodmmass1=data[:,7]
-                BH_id2=data[:,8].astype(int)
-                BH_mass2=data[:,9]
-                hosthalomass2=data[:,10]
-                hosthalostellarmass2=data[:,11]
-                hosthalogasmass2=data[:,12]
-                hosthalodmmass2=data[:,13]
+        BH_id1_complete=numpy.array([],dtype=int)
+        BH_mass1_complete=numpy.array([])
+        BH_id2_complete=numpy.array([],dtype=int)
+        BH_mass2_complete=numpy.array([])
 
-            file_id_complete=numpy.append(file_id_complete,file_id)
-            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+        hosthalomass1_complete=numpy.array([])
+        hosthalomass2_complete=numpy.array([])
+        hosthalostellarmass1_complete=numpy.array([])
+        hosthalostellarmass2_complete=numpy.array([])
+        hosthalogasmass1_complete=numpy.array([])
+        hosthalogasmass2_complete=numpy.array([])
+        hosthalodmmass1_complete=numpy.array([])
+        hosthalodmmass2_complete=numpy.array([])
+        N_empty=0
+        for name in output_file_names[:]:
+            data=numpy.loadtxt(output_path+'blackhole_mergerhosts/'+name)
 
-            hosthalomass1_complete=numpy.append(hosthalomass1_complete,hosthalomass1)
-            hosthalostellarmass1_complete=numpy.append(hosthalostellarmass1_complete,hosthalostellarmass1)    
-            hosthalogasmass1_complete=numpy.append(hosthalogasmass1_complete,hosthalogasmass1)
-            hosthalodmmass1_complete=numpy.append(hosthalodmmass1_complete,hosthalodmmass1)    
+            try:
+                if (data.shape==(14,)):
+                    file_id=numpy.array([data[0].astype(int)])
+                    scale_fac=numpy.array([data[1]])
+                    BH_id1=numpy.array([data[2].astype(int)])
+                    BH_mass1=numpy.array([data[3]])
+                    hosthalomass1=numpy.array([data[4]])
+                    hosthalostellarmass1=numpy.array([data[5]])
+                    hosthalogasmass1=numpy.array([data[6]])
+                    hosthalodmmass1=numpy.array([data[7]])
+                    BH_id2=numpy.array([data[8].astype(int)])
+                    BH_mass2=numpy.array([data[9]])
+                    hosthalomass2=numpy.array([data[10]])
+                    hosthalostellarmass2=numpy.array([data[11]])
+                    hosthalogasmass2=numpy.array([data[12]])
+                    hosthalodmmass2=numpy.array([data[13]])
+                else:
+                    file_id=data[:,0].astype(int)
+                    scale_fac=data[:,1]
+                    BH_id1=data[:,2].astype(int)
+                    BH_mass1=data[:,3]
+                    hosthalomass1=data[:,4]
+                    hosthalostellarmass1=data[:,5]
+                    hosthalogasmass1=data[:,6]
+                    hosthalodmmass1=data[:,7]
+                    BH_id2=data[:,8].astype(int)
+                    BH_mass2=data[:,9]
+                    hosthalomass2=data[:,10]
+                    hosthalostellarmass2=data[:,11]
+                    hosthalogasmass2=data[:,12]
+                    hosthalodmmass2=data[:,13]
 
-            hosthalomass2_complete=numpy.append(hosthalomass2_complete,hosthalomass2)
-            hosthalostellarmass2_complete=numpy.append(hosthalostellarmass2_complete,hosthalostellarmass2)    
-            hosthalogasmass2_complete=numpy.append(hosthalogasmass2_complete,hosthalogasmass2)
-            hosthalodmmass2_complete=numpy.append(hosthalodmmass2_complete,hosthalodmmass2)    
- 
-            BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
-            BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)
-            BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
-            BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2)
+                file_id_complete=numpy.append(file_id_complete,file_id)
+                scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
 
+                hosthalomass1_complete=numpy.append(hosthalomass1_complete,hosthalomass1)
+                hosthalostellarmass1_complete=numpy.append(hosthalostellarmass1_complete,hosthalostellarmass1)    
+                hosthalogasmass1_complete=numpy.append(hosthalogasmass1_complete,hosthalogasmass1)
+                hosthalodmmass1_complete=numpy.append(hosthalodmmass1_complete,hosthalodmmass1)    
 
+                hosthalomass2_complete=numpy.append(hosthalomass2_complete,hosthalomass2)
+                hosthalostellarmass2_complete=numpy.append(hosthalostellarmass2_complete,hosthalostellarmass2)    
+                hosthalogasmass2_complete=numpy.append(hosthalogasmass2_complete,hosthalogasmass2)
+                hosthalodmmass2_complete=numpy.append(hosthalodmmass2_complete,hosthalodmmass2)    
 
-        except IndexError:
-            N_empty+=1
-            aaa=1
+                BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
+                BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)
+                BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
+                BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2)
+            except IndexError:
+                N_empty+=1
+                aaa=1
 
     def fetch_primary_secondary(prop1,prop2,primary_index,secondary_index):
         prop_tuple=list(zip(prop1,prop2))
@@ -1079,7 +1106,7 @@ def get_merger_events_from_snapshot(output_path,desired_redshift):
     return Time_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,TaskID_sorted,0
 
 
-def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0,get_all_blackhole_history=0):
+def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0,get_all_blackhole_history=0,HDF5=0):
     def parse_id_col(BH_ids_as_string):
         return numpy.int(BH_ids_as_string[3:])
     vec_parse_id_col=numpy.vectorize(parse_id_col)
@@ -1094,53 +1121,77 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,merger
     sound_speeds_for_id=numpy.array([])
     
     try:
-        total_desired_ids,merging_times=get_progenitors_and_descendants(output_path,desired_id,mergers_from_snapshot=mergers_from_snapshot)
+        total_desired_ids,merging_times=get_progenitors_and_descendants(output_path,desired_id,mergers_from_snapshot=mergers_from_snapshot,HDF5=HDF5)
     except:
     #if(1==1):
         merging_times=[]
         total_desired_ids=[desired_id]
     ii=0
-    for output_file_name in output_file_names[:]:
-        if ('blackhole_details' in output_file_name):
-            print(ii)
-            ii+=1
-            try:
-                if use_cleaned:
-                    full_data=numpy.loadtxt(output_path+'blackhole_details_cleaned/'+output_file_name,dtype='str')
-                else:
-                    full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
-            except:
-                
-                try:
-                    print("Last row missing in ",output_file_name)
-                    full_data=numpy.genfromtxt(output_path+'blackhole_details/'+output_file_name,dtype='str',skip_footer=1)
-                except:
-                    print("Failed completely",output_file_name)
-                    continue
-            try:     
-                BH_ids=vec_parse_id_col(full_data[:,0])
-                scale_factors=(full_data[:,1]).astype('float')
-                BH_masses=(full_data[:,2]).astype('float')
-                BH_mdots=(full_data[:,3]).astype('float')
-                rhos=(full_data[:,4]).astype('float')
-                sound_speeds=(full_data[:,5]).astype('float')
+    
+    if (HDF5):
+        hf = h5py.File(output_path+'blackhole_details.hdf5')
+        BH_ids=hf.get('BH_ID')[:]
+        scale_factors=hf.get('ScaleFactor')[:]
 
-                final_extract=numpy.array([False]*len(sound_speeds))
-                if (len(total_desired_ids)>0):
-                    for d_id in total_desired_ids:
-                        extract_id=(d_id==BH_ids)
-                        final_extract=final_extract+extract_id
-                #print(len(BH_ids),len(BH_ids[extract_id]))
-                if (get_all_blackhole_history==1):
-                    final_extract=BH_ids==BH_ids
-                BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
-                scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
-                BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
-                BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
-                rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
-                sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
-            except:
-                aa=1
+        BH_masses=hf.get('BH_Mass')[:]
+        BH_mdots=hf.get('BH_Mdot')[:]
+        rhos=hf.get('Rho')[:]
+        sound_speeds=hf.get('cs')[:]  
+        if (len(total_desired_ids)>0):
+            final_extract=numpy.array([False]*len(sound_speeds))
+            for d_id in total_desired_ids:
+                extract_id=(d_id==BH_ids)
+                final_extract=final_extract+extract_id
+        if (get_all_blackhole_history==1):
+            final_extract=BH_ids==BH_ids
+        BH_ids_for_id=BH_ids[final_extract]
+        scale_factors_for_id=scale_factors[final_extract]
+        BH_masses_for_id=BH_masses[final_extract]
+        BH_mdots_for_id=BH_mdots[final_extract]
+        rhos_for_id=rhos[final_extract]
+        sound_speeds_for_id=sound_speeds[final_extract]    
+    else:
+        for output_file_name in output_file_names[:]:
+            if ('blackhole_details' in output_file_name):
+                print(ii)
+                ii+=1
+                try:
+                    if use_cleaned:
+                        full_data=numpy.loadtxt(output_path+'blackhole_details_cleaned/'+output_file_name,dtype='str')
+                    else:
+                        full_data=numpy.loadtxt(output_path+'blackhole_details/'+output_file_name,dtype='str')
+                except:
+
+                    try:
+                        print("Last row missing in ",output_file_name)
+                        full_data=numpy.genfromtxt(output_path+'blackhole_details/'+output_file_name,dtype='str',skip_footer=1)
+                    except:
+                        print("Failed completely",output_file_name)
+                        continue
+                try:     
+                    BH_ids=vec_parse_id_col(full_data[:,0])
+                    scale_factors=(full_data[:,1]).astype('float')
+                    BH_masses=(full_data[:,2]).astype('float')
+                    BH_mdots=(full_data[:,3]).astype('float')
+                    rhos=(full_data[:,4]).astype('float')
+                    sound_speeds=(full_data[:,5]).astype('float')
+
+                    final_extract=numpy.array([False]*len(sound_speeds))
+                    if (len(total_desired_ids)>0):
+                        for d_id in total_desired_ids:
+                            extract_id=(d_id==BH_ids)
+                            final_extract=final_extract+extract_id
+                    #print(len(BH_ids),len(BH_ids[extract_id]))
+                    if (get_all_blackhole_history==1):
+                        final_extract=BH_ids==BH_ids
+                    BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids[final_extract])
+                    scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors[final_extract])
+                    BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses[final_extract])
+                    BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots[final_extract])
+                    rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
+                    sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
+                except:
+                    aa=1
             
     return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
 
@@ -1203,7 +1254,7 @@ def get_blackhole_history_high_res_all_progenitors_v2(output_path,desired_id):
 
         
         
-def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100,mergers_from_snapshot=0):
+def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100,mergers_from_snapshot=0,HDF5=0):
 
     BH_ids_for_id=numpy.array([],dtype=int)
     scale_factors_for_id=numpy.array([])
@@ -1214,7 +1265,7 @@ def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100,mer
     if (mergers_from_snapshot):
         merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events_from_snapshot(output_path,0)
     else:
-        merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events(output_path)
+        merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events(output_path,HDF5=HDF5)
     progenitor_ids=numpy.array([desired_id],dtype=int)
     final_merging_times=numpy.array([])
     progenitor_ids_before_update=numpy.array([],dtype=int)
@@ -1848,6 +1899,213 @@ def trace_a_halo(basePath,halo_index_to_be_traced,initial_redshift,final_redshif
 
     final_halo_index_to_be_traced=SubhaloGrNr[final_subhalo_index]
     return final_halo_index_to_be_traced
+
+
+def convert_merger_events_to_hdf5(basePath):
+    output_file_names=os.listdir(basePath+'blackhole_mergers/')
+    snapshot_space=[]
+    redshift_space=[]
+
+    file_id_complete=numpy.array([],dtype=int)
+    scale_fac_complete=numpy.array([])
+
+    BH_id1_complete=numpy.array([],dtype=int)
+    BH_mass1_complete=numpy.array([])
+    BH_id2_complete=numpy.array([],dtype=int)
+    BH_mass2_complete=numpy.array([])
+
+    N_empty=0
+
+    for name in output_file_names[:]:
+        #print(name)
+        data=numpy.loadtxt(basePath+'blackhole_mergers/'+name)
+        try:
+            if (data.shape==(6,)):
+                file_id=numpy.array([data[0].astype(int)])
+                scale_fac=numpy.array([data[1]])
+                BH_id1=numpy.array([data[2].astype(int)])
+                BH_mass1=numpy.array([data[3]])
+                BH_id2=numpy.array([data[4].astype(int)])
+                BH_mass2=numpy.array([data[5]])                             
+            else:    
+                file_id=data[:,0].astype(int)
+                scale_fac=data[:,1]
+                BH_id1=data[:,2].astype(int)
+                BH_mass1=data[:,3]
+                BH_id2=data[:,4].astype(int)
+                BH_mass2=data[:,5]
+
+            file_id_complete=numpy.append(file_id_complete,file_id)
+            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+            BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
+            BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
+            BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
+            BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2) 
+        except IndexError:
+            N_empty+=1
+            aaa=1
+    hf = h5py.File(basePath+'blackhole_mergers.hdf5','w')
+    hf.create_dataset('FileID',data=file_id_complete)
+    hf.create_dataset('ScaleFactor',data=scale_fac_complete)
+    hf.create_dataset('BH_ID1',data=BH_id1_complete)
+    hf.create_dataset('BH_Mass1',data=BH_mass1_complete)
+    hf.create_dataset('BH_ID2',data=BH_id2_complete)
+    hf.create_dataset('BH_Mass2',data=BH_mass2_complete)
+    hf.close()
+    
+    
+def convert_merger_hosts_to_hdf5(basePath):
+    output_file_names=os.listdir(basePath+'blackhole_mergerhosts/')
+    snapshot_space=[]
+    redshift_space=[]
+
+    file_id_complete=numpy.array([],dtype=int)
+    scale_fac_complete=numpy.array([])
+
+    BH_id1_complete=numpy.array([],dtype=int)
+    BH_mass1_complete=numpy.array([])
+    BH_id2_complete=numpy.array([],dtype=int)
+    BH_mass2_complete=numpy.array([])
+
+    hosthalomass1_complete=numpy.array([])
+    hosthalomass2_complete=numpy.array([])
+    hosthalostellarmass1_complete=numpy.array([])
+    hosthalostellarmass2_complete=numpy.array([])
+    hosthalogasmass1_complete=numpy.array([])
+    hosthalogasmass2_complete=numpy.array([])
+    hosthalodmmass1_complete=numpy.array([])
+    hosthalodmmass2_complete=numpy.array([])
+    N_empty=0
+    for name in output_file_names[:]:
+        data=numpy.loadtxt(basePath+'blackhole_mergerhosts/'+name)
+
+        try:
+            if (data.shape==(14,)):
+                file_id=numpy.array([data[0].astype(int)])
+                scale_fac=numpy.array([data[1]])
+                BH_id1=numpy.array([data[2].astype(int)])
+                BH_mass1=numpy.array([data[3]])
+                hosthalomass1=numpy.array([data[4]])
+                hosthalostellarmass1=numpy.array([data[5]])
+                hosthalogasmass1=numpy.array([data[6]])
+                hosthalodmmass1=numpy.array([data[7]])
+                BH_id2=numpy.array([data[8].astype(int)])
+                BH_mass2=numpy.array([data[9]])
+                hosthalomass2=numpy.array([data[10]])
+                hosthalostellarmass2=numpy.array([data[11]])
+                hosthalogasmass2=numpy.array([data[12]])
+                hosthalodmmass2=numpy.array([data[13]])
+            else:
+                file_id=data[:,0].astype(int)
+                scale_fac=data[:,1]
+                BH_id1=data[:,2].astype(int)
+                BH_mass1=data[:,3]
+                hosthalomass1=data[:,4]
+                hosthalostellarmass1=data[:,5]
+                hosthalogasmass1=data[:,6]
+                hosthalodmmass1=data[:,7]
+                BH_id2=data[:,8].astype(int)
+                BH_mass2=data[:,9]
+                hosthalomass2=data[:,10]
+                hosthalostellarmass2=data[:,11]
+                hosthalogasmass2=data[:,12]
+                hosthalodmmass2=data[:,13]
+
+            file_id_complete=numpy.append(file_id_complete,file_id)
+            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+
+            hosthalomass1_complete=numpy.append(hosthalomass1_complete,hosthalomass1)
+            hosthalostellarmass1_complete=numpy.append(hosthalostellarmass1_complete,hosthalostellarmass1)    
+            hosthalogasmass1_complete=numpy.append(hosthalogasmass1_complete,hosthalogasmass1)
+            hosthalodmmass1_complete=numpy.append(hosthalodmmass1_complete,hosthalodmmass1)    
+
+            hosthalomass2_complete=numpy.append(hosthalomass2_complete,hosthalomass2)
+            hosthalostellarmass2_complete=numpy.append(hosthalostellarmass2_complete,hosthalostellarmass2)    
+            hosthalogasmass2_complete=numpy.append(hosthalogasmass2_complete,hosthalogasmass2)
+            hosthalodmmass2_complete=numpy.append(hosthalodmmass2_complete,hosthalodmmass2)    
+ 
+            BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
+            BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)
+            BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
+            BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2)
+
+
+
+        except IndexError:
+            N_empty+=1
+            aaa=1
+            
+            
+    hf = h5py.File(basePath+'blackhole_mergerhosts.hdf5','w')
+    hf.create_dataset('FileID',data=file_id_complete)
+    hf.create_dataset('ScaleFactor',data=scale_fac_complete)
+    
+    hf.create_dataset('BH_ID1',data=BH_id1_complete)
+    hf.create_dataset('BH_Mass1',data=BH_mass1_complete)
+    hf.create_dataset('BH_ID2',data=BH_id2_complete)
+    hf.create_dataset('BH_Mass2',data=BH_mass2_complete)
+    
+    hf.create_dataset('HostHaloMass1',data=hosthalomass1_complete)
+    hf.create_dataset('HostHaloStellarMass1',data=hosthalostellarmass1_complete)
+    hf.create_dataset('HostHaloGasMass1',data=hosthalogasmass1_complete)
+    hf.create_dataset('HostHaloDMMass1',data=hosthalodmmass1_complete)
+    
+    hf.create_dataset('HostHaloMass2',data=hosthalomass2_complete)
+    hf.create_dataset('HostHaloStellarMass2',data=hosthalostellarmass2_complete)
+    hf.create_dataset('HostHaloGasMass2',data=hosthalogasmass2_complete)
+    hf.create_dataset('HostHaloDMMass2',data=hosthalodmmass2_complete)   
+    hf.close()
+    
+    
+def convert_details_to_hdf5(basePath):
+    def parse_id_col(BH_ids_as_string):
+        return numpy.int(BH_ids_as_string[3:])
+    vec_parse_id_col=numpy.vectorize(parse_id_col)
+    output_file_names=os.listdir(basePath+'blackhole_details/')
+    BH_ids_for_id=numpy.array([],dtype=int)
+    scale_factors_for_id=numpy.array([])
+    BH_masses_for_id=numpy.array([])
+    BH_mdots_for_id=numpy.array([])
+    rhos_for_id=numpy.array([])
+    sound_speeds_for_id=numpy.array([])
+    ii=0
+    for output_file_name in output_file_names[:]:
+        if ('blackhole_details' in output_file_name):
+            print(ii)
+            ii+=1
+            try:
+                full_data=numpy.loadtxt(basePath+'blackhole_details/'+output_file_name,dtype='str')
+           
+                
+                BH_ids=vec_parse_id_col(full_data[:,0])
+                scale_factors=(full_data[:,1]).astype('float')
+                BH_masses=(full_data[:,2]).astype('float')
+                BH_mdots=(full_data[:,3]).astype('float')
+                rhos=(full_data[:,4]).astype('float')
+                sound_speeds=(full_data[:,5]).astype('float')
+
+
+                BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids)
+                scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors)
+                BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses)
+                BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots)
+                rhos_for_id=numpy.append(rhos_for_id,rhos)
+                sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds)
+            except ValueError:
+                aa=1            
+    
+    hf = h5py.File(basePath+'blackhole_details.hdf5','w')
+    hf.create_dataset('BH_ID',data=BH_ids_for_id)
+    hf.create_dataset('ScaleFactor',data=scale_factors_for_id)
+    
+    hf.create_dataset('BH_Mass',data=BH_masses_for_id)
+    hf.create_dataset('BH_Mdot',data=BH_mdots_for_id)
+    hf.create_dataset('Rho',data=rhos_for_id)
+    hf.create_dataset('cs',data=sound_speeds_for_id)
+    hf.close()
+   
+
+
     
 
         
