@@ -797,6 +797,7 @@ def get_merger_events(output_path,get_primary_secondary_indices=0,HDF5=0):
         BH_mass1_complete=hf.get('BH_Mass1')[:]
         BH_id2_complete=hf.get('BH_ID2')[:]
         BH_mass2_complete=hf.get('BH_Mass2')[:]
+        hf.close()
     else:
         output_file_names=os.listdir(output_path+'blackhole_mergers/')
         snapshot_space=[]
@@ -855,12 +856,19 @@ def get_merger_events(output_path,get_primary_secondary_indices=0,HDF5=0):
     primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
     secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
     
-    scale_fac_complete_sorted=sort_X_based_on_Y(scale_fac_complete,scale_fac_complete)
-    primary_mass_sorted=sort_X_based_on_Y(primary_mass,scale_fac_complete)
-    secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,scale_fac_complete)
-    primary_id_sorted=sort_X_based_on_Y(primary_id,scale_fac_complete)
-    secondary_id_sorted=sort_X_based_on_Y(secondary_id,scale_fac_complete)
-    file_id_complete_sorted=sort_X_based_on_Y(file_id_complete,scale_fac_complete)
+    #scale_fac_complete_sorted=sort_X_based_on_Y(scale_fac_complete,scale_fac_complete)
+    #primary_mass_sorted=sort_X_based_on_Y(primary_mass,scale_fac_complete)
+    #secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,scale_fac_complete)
+    #primary_id_sorted=sort_X_based_on_Y(primary_id,scale_fac_complete)
+    #secondary_id_sorted=sort_X_based_on_Y(secondary_id,scale_fac_complete)
+    #file_id_complete_sorted=sort_X_based_on_Y(file_id_complete,scale_fac_complete)
+    
+    scale_fac_complete_sorted=scale_fac_complete
+    primary_mass_sorted=primary_mass
+    secondary_mass_sorted=secondary_mass
+    primary_id_sorted=primary_id
+    secondary_id_sorted=secondary_id
+    file_id_complete_sorted=file_id_complete
     if get_primary_secondary_indices:
         return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty,primary_index,secondary_index
     else:
@@ -887,6 +895,7 @@ def get_merger_events_hosts(output_path,HDF5=0):
         hosthalostellarmass2_complete=hf.get('HostHaloStellarMass2')[:]
         hosthalogasmass2_complete=hf.get('HostHaloGasMass2')[:]
         hosthalodmmass2_complete=hf.get('HostHaloDMMass2')[:]
+        hf.close()
     
     else:
         output_file_names=os.listdir(output_path+'blackhole_mergerhosts/')
@@ -1122,7 +1131,7 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,merger
     
     try:
         total_desired_ids,merging_times=get_progenitors_and_descendants(output_path,desired_id,mergers_from_snapshot=mergers_from_snapshot,HDF5=HDF5,ONLY_PROGENITORS=ONLY_PROGENITORS,desired_id_redshift=desired_id_redshift)
-        temp_merging_redshifts=numpy.append(numpy.array([0.]),1./merging_times-1)
+        temp_merging_redshifts=numpy.append(1./merging_times-1,numpy.array([0.]))
     except:
     #if(1==1):
         merging_times=[]
@@ -1139,10 +1148,12 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,merger
         BH_mdots=hf.get('BH_Mdot')[:]
         rhos=hf.get('Rho')[:]
         sound_speeds=hf.get('cs')[:]  
+        hf.close()
         if (len(total_desired_ids)>0):
             final_extract=numpy.array([False]*len(sound_speeds))
             for d_id,z_merger in zip(total_desired_ids,temp_merging_redshifts):
                 extract_id=(d_id==BH_ids)
+                #print("For id %d, the redshift cut off is %.4f$"%(d_id,z_merger))
                 final_extract=final_extract+(extract_id&(merger_redshifts>z_merger))
             if (ONLY_PROGENITORS):
                 mask_redshift=merger_redshifts>desired_id_redshift
@@ -2148,6 +2159,72 @@ def convert_details_to_hdf5(basePath):
     hf.create_dataset('cs',data=sound_speeds_for_id)
     hf.close()
     
+
+def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift): 
+    global N_mergers
+    N_mergers=0
+    class Blackhole:
+        def __init__(self):
+            self.BHID=-1
+            self.BHMassAtLastMerger=-1.
+            self.PrimaryProgenitor = -1
+            self.SecondaryProgenitor = -1
+            self.LastMergedAtRedshift=-1 
+    #-----------------------------------------------------------------------------------------------------------------------
+    #----------------------------------This function fills up the progenitor tree------------------------------------------               
+    def function_fill_progenitor_tree(blackhole_ID,currentblackhole,minimum_redshift):
+        global N_mergers
+        currentblackhole.BHID=blackhole_ID
+        extract_last_merger_candidate=((primary_id==currentblackhole.BHID)|(secondary_id==currentblackhole.BHID))&(merging_redshifts>minimum_redshift)
+        possible_merging_redshifts=merging_redshifts[extract_last_merger_candidate]
+        possible_primary_id=primary_id[extract_last_merger_candidate]
+        possible_secondary_id=secondary_id[extract_last_merger_candidate]
+        possible_primary_mass=primary_mass[extract_last_merger_candidate]
+        possible_secondary_mass=secondary_mass[extract_last_merger_candidate]
+        #print("Looking for mergers with redshifts greater than %.3f"%minimum_redshift)
+        if (len(possible_merging_redshifts)==0):
+            #print("No more candidate mergers found")
+            return
+        #print("Candidate mergers found for BHID: %d"%blackhole_ID)
+        N_mergers+=1
+        extract_most_recent_merger=possible_merging_redshifts==numpy.amin(possible_merging_redshifts)
+        currentblackhole.LastMergedAtRedshift=possible_merging_redshifts[extract_most_recent_merger][0]       
+        
+        primary_progenitor_ID=possible_primary_id[extract_most_recent_merger][0]
+        secondary_progenitor_ID=possible_secondary_id[extract_most_recent_merger][0]
+        
+        if (primary_progenitor_ID==currentblackhole.BHID):
+            currentblackhole.BHMassAtLastMerger=possible_primary_mass[extract_most_recent_merger][0]
+        
+        if (secondary_progenitor_ID==currentblackhole.BHID):
+            currentblackhole.BHMassAtLastMerger=possible_secondary_mass[extract_most_recent_merger][0]
+
+        currentblackhole.PrimaryProgenitor=Blackhole()
+        currentblackhole.SecondaryProgenitor=Blackhole()
+
+
+        function_fill_progenitor_tree(primary_progenitor_ID,currentblackhole.PrimaryProgenitor,currentblackhole.LastMergedAtRedshift)
+        function_fill_progenitor_tree(secondary_progenitor_ID,currentblackhole.SecondaryProgenitor,currentblackhole.LastMergedAtRedshift)    
+
+
+    p_type=5
+    ParticleIDs,output_redshift=get_particle_property(basePath,'ParticleIDs',p_type,desired_redshift)
+    BH_Mass,output_redshift=get_particle_property(basePath,'BH_Mass',p_type,desired_redshift)
+    blackhole_ID=ParticleIDs[blackhole_index]   
+    merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=get_merger_events(basePath,HDF5=1)
+
+    merging_redshifts=1./merging_time-1.
+    #print(merging_redshifts)
+
+
+    sys.setrecursionlimit(1000000)
+        
+    rootblackhole = Blackhole()
+    function_fill_progenitor_tree(blackhole_ID,rootblackhole,output_redshift)
+    return rootblackhole,N_mergers
+
+
+
     
 
    
