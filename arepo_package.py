@@ -1156,9 +1156,9 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,merger
             for d_id,z_merger in zip(total_desired_ids,temp_merging_redshifts):
                 extract_id=(d_id==BH_ids)
                 #print("For id %d, the redshift cut off is %.4f$"%(d_id,z_merger))
-                final_extract=final_extract+(extract_id&(merger_redshifts>z_merger))
+                final_extract=final_extract+(extract_id)#&(merger_redshifts>z_merger))
             if (ONLY_PROGENITORS):
-                mask_redshift=merger_redshifts>desired_id_redshift
+                mask_redshift=merger_redshifts>desired_id_redshift-1e-2
                 final_extract=final_extract&mask_redshift
                 
         if (get_all_blackhole_history==1):
@@ -1302,7 +1302,7 @@ def get_progenitors_and_descendants(output_path,desired_id,MAX_ITERATION=100,mer
             extract_events_as_primary_BH=extract_events_as_primary_BH+(primary_id==ids)
             if (ONLY_PROGENITORS):
                 merger_redshift=1./merging_time-1.
-                mask_redshift=merger_redshift>desired_id_redshift
+                mask_redshift=merger_redshift>desired_id_redshift-1e-2
                 extract_events_as_secondary_BH=extract_events_as_secondary_BH&mask_redshift
                 extract_events_as_primary_BH=extract_events_as_primary_BH&mask_redshift
                 
@@ -1469,7 +1469,7 @@ def generate_group_ids(output_path,desired_redshift,p_type,save_output_path='./'
 
 def generate_subhalo_ids(output_path,desired_redshift,p_type,save_output_path='./',create=False):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift)   
-    if ((os.path.exists(save_output_path+'group_ids_%d.npy'%output_snapshot))&(create==False)):
+    if ((os.path.exists(save_output_path+'subhalo_ids_%d.npy'%output_snapshot))&(create==False)):
         print("File exists!! subhalo ids exist already")
         subhalo_ids=numpy.load(save_output_path+'subhalo_ids_%d.npy'%output_snapshot)
         distance_from_subhalo_center=numpy.load(save_output_path+'distance_from_subhalo_center_%d.npy'%output_snapshot)
@@ -2246,7 +2246,7 @@ def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift):
     sys.setrecursionlimit(1000000)
         
     rootblackhole = Blackhole()
-    function_fill_progenitor_tree(blackhole_ID,rootblackhole,output_redshift)
+    function_fill_progenitor_tree(blackhole_ID,rootblackhole,output_redshift-1e-2)
     return rootblackhole,N_mergers,indices_of_included_events
 
 
