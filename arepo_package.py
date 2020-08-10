@@ -15,7 +15,8 @@ import matplotlib as mpl
 
 def get_snapshot_redshift_correspondence(output_path):
     output_file_names=os.listdir(output_path)
-    print(output_file_names)
+#    print(output_file_names)
+#    print(output_path)
     snapshot_space=[]
     redshift_space=[]
     for name in output_file_names:
