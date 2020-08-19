@@ -101,6 +101,7 @@ def extract_slice(basePath,p_type,desired_center,desired_redshift,field,planeofs
     positions_relative_to_center=positions-numpy.ravel(desired_center)
       
     if (orient):
+        perpendicular_vector=stellar_ang_mom(basePath,desired_redshift,desired_center)
         positions_relative_to_center=orient_plane(positions_relative_to_center,perpendicular_vector)
          
     if (plane=='xy'):
@@ -142,18 +143,23 @@ def apply_mask(mask2,planeofsky_pos1,pixelsize_planeofsky1,final_property,pixel_
     mask=(mask1) & (mask2)
     return numpy.sum(final_property[mask])/pixel_volume
 
-def apply_mask2(planeofsky_pos2,pixelsize_planeofsky2,planeofsky_pos1,pixelsize_planeofsky1,final_property,pixel_volume,planeofsky_tuple):
+def apply_mask2(field,planeofsky_pos2,pixelsize_planeofsky2,planeofsky_pos1,pixelsize_planeofsky1,final_property,pixel_volume,planeofsky_tuple):
     pixel_position2=planeofsky_tuple[0]
     pixel_position1=planeofsky_tuple[1]
     mask1=(planeofsky_pos1>(pixel_position1-pixelsize_planeofsky1/2.0))&(planeofsky_pos1<(pixel_position1+pixelsize_planeofsky1/2.))
     mask2=(planeofsky_pos2>(pixel_position2-pixelsize_planeofsky2/2.0))&(planeofsky_pos2<(pixel_position2+pixelsize_planeofsky2/2.))
     mask=(mask1) & (mask2)
-    return numpy.sum(final_property[mask])/pixel_volume
+    if (field=='Density'):
+        return numpy.sum(final_property[mask])/pixel_volume
+    else:
+        return numpy.average(final_property[mask])
 
 
 
+def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,PARALLEL=0,np=1,colormap='Greys_r'):
+    if (PARALLEL==0):
+        print("property:",final_property[final_property>1e-8])    
 
-def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,PARALLEL=0,np=1):
     n_planeofsky1=number_of_pixels
     n_planeofsky2=number_of_pixels
     planeofsky_pos1=final_positions[:,0]
@@ -169,6 +175,7 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
     pixelsize_lineofsight=numpy.amax(lineofsight_pos)-numpy.amin(lineofsight_pos)
 
     proj_property=[]
+    pixel_volume=1.
     if (field=='Density'):
         pixel_volume=pixelsize_lineofsight*pixelsize_planeofsky1*pixelsize_planeofsky2
  
@@ -184,7 +191,7 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
     elif (PARALLEL==2) :
         p=Pool(np)
         planeofsky_tuple_grid=list(itertools.product(planeofsky2_grid,planeofsky1_grid))
-        proj_property=numpy.array(p.map(functools.partial(apply_mask2,planeofsky_pos2,pixelsize_planeofsky2,planeofsky_pos1,pixelsize_planeofsky1,final_property,pixel_volume),planeofsky_tuple_grid))
+        proj_property=numpy.array(p.map(functools.partial(apply_mask2,field,planeofsky_pos2,pixelsize_planeofsky2,planeofsky_pos1,pixelsize_planeofsky1,final_property,pixel_volume),planeofsky_tuple_grid))
         p.close()
         
     else:
@@ -205,35 +212,34 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
     
     proj_property=numpy.asarray(proj_property)
     print(proj_property)
-    proj_property[numpy.isnan(proj_property)]=1e-19
+   # proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19
     print(proj_property)
     Proj_property=proj_property.reshape(number_of_pixels,number_of_pixels)
     if (apply_filter):
         Proj_property=gaussian_filter(Proj_property,sigma=sigma_filter)
-       
+   # proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19       
 
     if (field=='Density'):
         print("making density")
-        #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=Proj_property.max()),cmap='Greys_r')
-        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=1e1,vmax=1e4),cmap='Greys_r')
+        #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=Proj_property.max()),cmap=colormap)
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=max(proj_property[proj_property>0])),cmap=colormap)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax)
-            cbar.set_label('log gas density ($M_{\odot}/(cKpc/h)^3$)',fontsize=15)
+            cbar.set_label(r'$\rho_{gas}$ ($M_{\odot}h^{3}kpc^{-3}$)',fontsize=40)
             cbar.ax.tick_params(labelsize=30) 
-        ax.set_xlabel('Plane of sky 1',fontsize=30)
-        ax.set_ylabel('Plane of sky 2',fontsize=30)
         #bh=plt.Circle((bhcoord[0],bhcoord[1]),0.5,color='black')
         #ax.add_artist(bh)
   
     if (field=='Metallicity'):
         print('making metal')
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='plasma')
-        fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=1e-8,vmax=numpy.amax(Proj_property)),cmap='plasma')
-        cbar=fig.colorbar(fig_object,ax=ax)
-        cbar.set_label('log gas metallicity $(Fe/H)/(Fe/H)_{\odot}$',fontsize=15)
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=1e-8,vmax=1.),cmap='plasma')
+        if (show_colorbar):
+            cbar=fig.colorbar(fig_object,ax=ax)
+            cbar.set_label('$Z/Z_{\odot}$',fontsize=40)
+            cbar.ax.tick_params(labelsize=30)
+
         #cbar.ax.set_ylim([cbar.norm(10e1),cbar.norm(10e-7)])
-        ax.set_xlabel('Plane of sky 1',fontsize=15)
-        ax.set_ylabel('Plane of sky 2',fontsize=15)
 
     if (field=='Temperature'):
         print('making temperature')
@@ -241,8 +247,6 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
         fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=1e2,vmax=1e7),cmap='hot')
         cbar=fig.colorbar(fig_object,ax=ax)
         cbar.set_label('log gas temperature $K$',fontsize=15)
-        ax.set_xlabel('Plane of sky 1',fontsize=15)
-        ax.set_ylabel('Plane of sky 2',fontsize=15)
  
     if (field=='Velocity Magnitude'):
         print('making velocity mag')
@@ -250,8 +254,8 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
         fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=1e1,vmax=1e5),cmap='viridis')
         cbar=fig.colorbar(fig_object,ax=ax)
         cbar.set_label('log gas velocity magnitude $km \sqrt{a}/s$',fontsize=15)
-        ax.set_xlabel('Plane of sky 1',fontsize=15)
-        ax.set_ylabel('Plane of sky 2',fontsize=15)
+    ax.set_xlabel('Plane of sky 1 ($h^{-1}kpc$)',fontsize=30)
+    ax.set_ylabel('Plane of sky 2 ($h^{-1}kpc$)',fontsize=30)
 
     
 def stellar_ang_mom(basePath,desired_redshift,desired_center,box_length=40):
