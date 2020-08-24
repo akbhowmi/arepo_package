@@ -314,7 +314,7 @@ def get_probability_density(HM,Nbins,log_HM_min,log_HM_max,linear=0):
         norm=numpy.diff(centers)[0]
     else:
         norm=1
-    return centers,HMF/norm,dHMF/norm,norm,counts_sum
+    return centers,HMF/norm/counts_sum,dHMF/norm/counts_sum,norm,counts_sum
 
 
 
