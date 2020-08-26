@@ -222,7 +222,8 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
     if (field=='Density'):
         print("making density")
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=Proj_property.max()),cmap=colormap)
-        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=max(proj_property[proj_property>0])),cmap=colormap)
+        #fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=max(proj_property[proj_property>0])),cmap=colormap)
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=1e1,vmax=1e6),cmap=colormap)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax)
             cbar.set_label(r'$\rho_{gas}$ ($M_{\odot}h^{3}kpc^{-3}$)',fontsize=40)
