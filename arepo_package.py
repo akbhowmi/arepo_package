@@ -742,6 +742,7 @@ def get_seeding_events2(output_path):
     density_complete=numpy.array([])
     FOFDMmass_complete=numpy.array([])
     indexmaxdens_complete=numpy.array([],dtype=int)
+    FOFStarFormingGasMass_complete=numpy.array([])
     #BH_mass2_complete=numpy.array([])
 
     N_empty=0
@@ -751,7 +752,7 @@ def get_seeding_events2(output_path):
 
         try:
         #for ii in [1]:
-            if (data.shape==(8,)):
+            if (data.shape==(9,)):
                 file_id=numpy.array([data[0].astype(int)])
                 scale_fac=numpy.array([data[1]])
                 BH_id=numpy.array([data[2].astype(int)])
@@ -760,6 +761,7 @@ def get_seeding_events2(output_path):
                 SFR=numpy.array([data[5]])
                 FOFDMmass=numpy.array([data[6]])
                 indexmaxdens=numpy.array([data[7].astype(int)])
+                FOFStarFormingGasMass=numpy.array([data[8]]) 
             else:    
                 file_id=data[:,0].astype(int)
                 scale_fac=data[:,1]
@@ -769,9 +771,7 @@ def get_seeding_events2(output_path):
                 SFR=data[:,5]
                 FOFDMmass=data[:,6]
                 indexmaxdens=data[:,7].astype(int)
-                
-            #print(
-
+                FOFStarFormingGasMass=data[:,8]
             file_id_complete=numpy.append(file_id_complete,file_id)
             scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
             BH_id_complete=numpy.append(BH_id_complete,BH_id)
@@ -781,12 +781,13 @@ def get_seeding_events2(output_path):
             density_complete=numpy.append(density_complete,density)
             FOFDMmass_complete=numpy.append(FOFDMmass_complete,FOFDMmass)
             indexmaxdens_complete=numpy.append(indexmaxdens_complete,indexmaxdens)
+            FOFStarFormingGasMass_complete=numpy.append(FOFStarFormingGasMass_complete,FOFStarFormingGasMass)
         except IndexError:
             N_empty+=1
             aaa=1
             print('Index err:', name)
     
-    return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,N_empty
+    return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,FOFStarFormingGasMass_complete,N_empty
 
 def get_merger_events(output_path,get_primary_secondary_indices=0,HDF5=0,SORT_PRIMARY_SECONDARY=0):
     N_empty=0
