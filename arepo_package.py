@@ -743,6 +743,7 @@ def get_seeding_events2(output_path):
     FOFDMmass_complete=numpy.array([])
     indexmaxdens_complete=numpy.array([],dtype=int)
     FOFStarFormingGasMass_complete=numpy.array([])
+    FOFStarFormingGasMetallicity_complete=numpy.array([])
     #BH_mass2_complete=numpy.array([])
 
     N_empty=0
@@ -752,7 +753,7 @@ def get_seeding_events2(output_path):
 
         try:
         #for ii in [1]:
-            if (data.shape==(9,)):
+            if (data.shape==(10,)):
                 file_id=numpy.array([data[0].astype(int)])
                 scale_fac=numpy.array([data[1]])
                 BH_id=numpy.array([data[2].astype(int)])
@@ -762,6 +763,7 @@ def get_seeding_events2(output_path):
                 FOFDMmass=numpy.array([data[6]])
                 indexmaxdens=numpy.array([data[7].astype(int)])
                 FOFStarFormingGasMass=numpy.array([data[8]]) 
+                FOFStarFormingGasMetallicity=numpy.array([data[9]])
             else:    
                 file_id=data[:,0].astype(int)
                 scale_fac=data[:,1]
@@ -772,6 +774,7 @@ def get_seeding_events2(output_path):
                 FOFDMmass=data[:,6]
                 indexmaxdens=data[:,7].astype(int)
                 FOFStarFormingGasMass=data[:,8]
+                FOFStarFormingGasMetallicity=data[:,9]
             file_id_complete=numpy.append(file_id_complete,file_id)
             scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
             BH_id_complete=numpy.append(BH_id_complete,BH_id)
@@ -782,12 +785,13 @@ def get_seeding_events2(output_path):
             FOFDMmass_complete=numpy.append(FOFDMmass_complete,FOFDMmass)
             indexmaxdens_complete=numpy.append(indexmaxdens_complete,indexmaxdens)
             FOFStarFormingGasMass_complete=numpy.append(FOFStarFormingGasMass_complete,FOFStarFormingGasMass)
+            FOFStarFormingGasMetallicity_complete=numpy.append(FOFStarFormingGasMetallicity_complete,FOFStarFormingGasMetallicity)
         except IndexError:
             N_empty+=1
             aaa=1
             print('Index err:', name)
     
-    return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,FOFStarFormingGasMass_complete,N_empty
+    return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,FOFStarFormingGasMass_complete,FOFStarFormingGasMetallicity_complete,N_empty
 
 def get_merger_events(output_path,get_primary_secondary_indices=0,HDF5=0,SORT_PRIMARY_SECONDARY=0):
     N_empty=0
@@ -1961,7 +1965,7 @@ def trace_a_halo(basePath,halo_index_to_be_traced,initial_redshift,final_redshif
     return final_halo_index_to_be_traced
 
 
-def convert_merger_events_to_hdf5(basePath):
+def convert_merger_events_to_hdf5(basePath, dont_save_in_basePath=0, save_output_path='.'):
     output_file_names=os.listdir(basePath+'blackhole_mergers/')
     snapshot_space=[]
     redshift_space=[]
@@ -2004,7 +2008,10 @@ def convert_merger_events_to_hdf5(basePath):
         except IndexError:
             N_empty+=1
             aaa=1
-    hf = h5py.File(basePath+'blackhole_mergers.hdf5','w')
+    if dont_save_in_basePath:
+        hf = h5py.File(save_output_path+'blackhole_mergers.hdf5','w')
+    else: 
+        hf = h5py.File(basePath+'blackhole_mergers.hdf5','w')
     hf.create_dataset('FileID',data=file_id_complete)
     hf.create_dataset('ScaleFactor',data=scale_fac_complete)
     hf.create_dataset('BH_ID1',data=BH_id1_complete)
