@@ -156,7 +156,7 @@ def apply_mask2(field,planeofsky_pos2,pixelsize_planeofsky2,planeofsky_pos1,pixe
 
 
 
-def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,PARALLEL=0,np=1,colormap='Greys_r'):
+def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,PARALLEL=0,np=1,colormap='Greys_r',valuemin=0.1,valuemax=1e6):
     if (PARALLEL==0):
         print("property:",final_property[final_property>1e-8])    
 
@@ -223,7 +223,7 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
         print("making density")
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=Proj_property.max()),cmap=colormap)
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=max(proj_property[proj_property>0])),cmap=colormap)
-        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=1e1,vmax=1e6),cmap=colormap)
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax)
             cbar.set_label(r'$\rho_{gas}$ ($M_{\odot}h^{3}kpc^{-3}$)',fontsize=40)
