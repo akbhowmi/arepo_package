@@ -76,11 +76,21 @@ def extract_slice(basePath,p_type,desired_center,desired_redshift,field,planeofs
         Masses,output_redshift=arepo_package.get_particle_property(basePath,'Masses',p_type,desired_redshift,list_all=False)
         Masses*=1e10 
         particle_property=Masses
+        
+    if ('LymanWernerIntensity' in field):
+        Masses,output_redshift=arepo_package.get_particle_property(basePath,field,p_type,desired_redshift,list_all=False)
+        particle_property=Masses
+        
     if (field=='Metallicity'):
         metallicity,output_redshift=arepo_package.get_particle_property(basePath,'GFM_Metallicity',p_type,desired_redshift,list_all=False)  
         metallicity/=0.0127
         #print(metallicity)
-        particle_property=metallicity        
+        particle_property=metallicity     
+        
+    if (field=='SFR'):
+        SFR,output_redshift=arepo_package.get_particle_property(basePath,'StarFormationRate',p_type,desired_redshift,list_all=False)  
+        particle_property=SFR  
+        
     if (field=='Temperature'):
         internal_energy,output_redshift=arepo_package.get_particle_property(basePath,'InternalEnergy',p_type,desired_redshift,list_all=False)
         electron_abundance,output_redshift=arepo_package.get_particle_property(basePath,'ElectronAbundance',p_type,desired_redshift,list_all=False)
@@ -152,13 +162,13 @@ def apply_mask2(field,planeofsky_pos2,pixelsize_planeofsky2,planeofsky_pos1,pixe
     if (field=='Density'):
         return numpy.sum(final_property[mask])/pixel_volume
     else:
-        return numpy.average(final_property[mask])
+        return numpy.sum(final_property[mask])/(len(final_property[mask])+1e-19)
 
 
 
-def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,PARALLEL=0,np=1,colormap='Greys_r',valuemin=0.1,valuemax=1e6):
+def construct_grid(final_positions,final_property,number_of_pixels,field,PARALLEL=0,np=1):
     if (PARALLEL==0):
-        print("property:",final_property[final_property>1e-8])    
+        print("property:",final_property[final_property>1e-12])    
 
     n_planeofsky1=number_of_pixels
     n_planeofsky2=number_of_pixels
@@ -203,6 +213,8 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
                 mask=(mask1) & (mask2)
                 if (field=='Density'):
                     proj_property.append(numpy.sum(final_property[mask])/pixel_volume)
+                elif (field=='LymanWernerIntensity'):
+                    proj_property.append(numpy.average(final_property[mask]))
                 else:
                     proj_property.append(numpy.average(final_property[mask]))
 
@@ -212,29 +224,43 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
     
     proj_property=numpy.asarray(proj_property)
     print(proj_property)
-   # proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19
+    proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=min(proj_property[proj_property>0])
     print(proj_property)
     Proj_property=proj_property.reshape(number_of_pixels,number_of_pixels)
-    if (apply_filter):
-        Proj_property=gaussian_filter(Proj_property,sigma=sigma_filter)
-   # proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19       
 
+   # proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19 
+    return First,Second,Proj_property
+
+def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,colormap='Greys_r',valuemin=0.1,valuemax=1e6,alph=1,show_labels=1,show_ticks=1):
+    if (apply_filter):
+        Proj_property=gaussian_filter(proj_property,sigma=sigma_filter)
     if (field=='Density'):
         print("making density")
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=Proj_property.max()),cmap=colormap)
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=max(proj_property[proj_property>0])),cmap=colormap)
-        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap)
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax)
             cbar.set_label(r'$\rho_{gas}$ ($M_{\odot}h^{3}kpc^{-3}$)',fontsize=40)
             cbar.ax.tick_params(labelsize=30) 
         #bh=plt.Circle((bhcoord[0],bhcoord[1]),0.5,color='black')
         #ax.add_artist(bh)
-  
+
+        
+    if (field=='LymanWernerIntensity'):
+        print('making LymanWernerIntensity')
+        #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='plasma')
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
+        if (show_colorbar):
+            cbar=fig.colorbar(fig_object,ax=ax)
+            cbar.set_label('$J/J_{21}$',fontsize=40)
+            cbar.ax.tick_params(labelsize=30)
+        
+        
     if (field=='Metallicity'):
         print('making metal')
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='plasma')
-        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=1e-8,vmax=1.),cmap='plasma')
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax)
             cbar.set_label('$Z/Z_{\odot}$',fontsize=40)
@@ -252,11 +278,24 @@ def visualize(final_positions,final_property,number_of_pixels,field,fig,ax,apply
     if (field=='Velocity Magnitude'):
         print('making velocity mag')
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='viridis')
-        fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=1e1,vmax=1e5),cmap='viridis')
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         cbar=fig.colorbar(fig_object,ax=ax)
-        cbar.set_label('log gas velocity magnitude $km \sqrt{a}/s$',fontsize=15)
-    ax.set_xlabel('Plane of sky 1 ($h^{-1}kpc$)',fontsize=30)
-    ax.set_ylabel('Plane of sky 2 ($h^{-1}kpc$)',fontsize=30)
+        cbar.set_label('SFR ($M_{\odot}/\mathrm{yr}^{-1}$)',fontsize=15)
+    if (field=='SFR'):
+        print('making SFR')
+        #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='viridis')
+        fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
+        cbar=fig.colorbar(fig_object,ax=ax)
+        cbar.set_label('SFR ($M_{\odot}/\mathrm{yr}^{-1}$)',fontsize=15)
+        cbar.ax.tick_params(labelsize=30)    
+   
+    
+    if (show_labels):
+        ax.set_xlabel('Plane of sky 1 ($h^{-1}kpc$)',fontsize=30)
+        ax.set_ylabel('Plane of sky 2 ($h^{-1}kpc$)',fontsize=30)
+    if (show_ticks==0):
+        ax.tick_params(labelleft=False,labelbottom=False)
+
 
     
 def stellar_ang_mom(basePath,desired_redshift,desired_center,box_length=40):

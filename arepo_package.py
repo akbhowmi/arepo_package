@@ -878,7 +878,7 @@ def get_seeding_events2(output_path):
 
         try:
         #for ii in [1]:
-            if (data.shape==(10,)):
+            if (data.shape==(11,)):
                 file_id=numpy.array([data[0].astype(int)])
                 scale_fac=numpy.array([data[1]])
                 BH_id=numpy.array([data[2].astype(int)])
@@ -1055,10 +1055,6 @@ def get_merger_events_debug(output_path,get_primary_secondary_indices=0,HDF5=0,S
                     BH_Hsml1=numpy.array([data[6]])
                     BH_Hsml2=numpy.array([data[7]])
                     
-
-                    
-
-
                 else:    
                     file_id=data[:,0].astype(int)
                     scale_fac=data[:,1]
@@ -1083,9 +1079,6 @@ def get_merger_events_debug(output_path,get_primary_secondary_indices=0,HDF5=0,S
     mass_tuple=list(zip(BH_mass1_complete,BH_mass2_complete))
     id_tuple=list(zip(BH_id1_complete,BH_id2_complete))
 
-    #primary_mass=numpy.array([numpy.amax([dat[0],dat[1]]) for dat in mass_tuple])
-    #secondary_mass=numpy.array([numpy.amin([dat[0],dat[1]]) for dat in mass_tuple])
-
     primary_index=numpy.array([numpy.argmax([dat[0],dat[1]]) for dat in mass_tuple])
     secondary_index=numpy.array([numpy.argmin([dat[0],dat[1]]) for dat in mass_tuple])
 
@@ -1095,23 +1088,10 @@ def get_merger_events_debug(output_path,get_primary_secondary_indices=0,HDF5=0,S
     primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
     secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
     
-    #scale_fac_complete_sorted=sort_X_based_on_Y(scale_fac_complete,scale_fac_complete)
-    #primary_mass_sorted=sort_X_based_on_Y(primary_mass,scale_fac_complete)
-    #secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,scale_fac_complete)
-    #primary_id_sorted=sort_X_based_on_Y(primary_id,scale_fac_complete)
-    #secondary_id_sorted=sort_X_based_on_Y(secondary_id,scale_fac_complete)
-    #file_id_complete_sorted=sort_X_based_on_Y(file_id_complete,scale_fac_complete)
-    
-    scale_fac_complete_sorted=scale_fac_complete
-    primary_mass_sorted=primary_mass
-    secondary_mass_sorted=secondary_mass
-    primary_id_sorted=primary_id
-    secondary_id_sorted=secondary_id
-    file_id_complete_sorted=file_id_complete
     if SORT_PRIMARY_SECONDARY:
-        return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty
+        return scale_fac_complete,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty
     else:
-        return scale_fac_complete_sorted,BH_mass1_complete,BH_mass2_complete,BH_id1_complete,BH_id2_complete,file_id_complete_sorted,N_empty,BH_Hsml1_complete,BH_Hsml2_complete   
+        return scale_fac_complete,BH_mass1_complete,BH_mass2_complete,BH_id1_complete,BH_id2_complete,file_id_complete,N_empty,BH_Hsml1_complete,BH_Hsml2_complete   
 
 
 def get_merger_events(output_path,get_primary_secondary_indices=0,HDF5=0,SORT_PRIMARY_SECONDARY=0):
@@ -1184,24 +1164,10 @@ def get_merger_events(output_path,get_primary_secondary_indices=0,HDF5=0,SORT_PR
 
     primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
     secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
-    
-    #scale_fac_complete_sorted=sort_X_based_on_Y(scale_fac_complete,scale_fac_complete)
-    #primary_mass_sorted=sort_X_based_on_Y(primary_mass,scale_fac_complete)
-    #secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,scale_fac_complete)
-    #primary_id_sorted=sort_X_based_on_Y(primary_id,scale_fac_complete)
-    #secondary_id_sorted=sort_X_based_on_Y(secondary_id,scale_fac_complete)
-    #file_id_complete_sorted=sort_X_based_on_Y(file_id_complete,scale_fac_complete)
-    
-    scale_fac_complete_sorted=scale_fac_complete
-    primary_mass_sorted=primary_mass
-    secondary_mass_sorted=secondary_mass
-    primary_id_sorted=primary_id
-    secondary_id_sorted=secondary_id
-    file_id_complete_sorted=file_id_complete
     if SORT_PRIMARY_SECONDARY:
-        return scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty
+        return scale_fac_complete,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty
     else:
-        return scale_fac_complete_sorted,BH_mass1_complete,BH_mass2_complete,BH_id1_complete,BH_id2_complete,file_id_complete_sorted,N_empty   
+        return scale_fac_complete,BH_mass1_complete,BH_mass2_complete,BH_id1_complete,BH_id2_complete,file_id_complete,N_empty   
 
 
 def get_merger_events_hosts(output_path,HDF5=0,SORT_PRIMARY_SECONDARY=0):
@@ -1326,67 +1292,8 @@ def get_merger_events_hosts(output_path,HDF5=0,SORT_PRIMARY_SECONDARY=0):
     else:
         return scale_fac_complete,BH_id1_complete,BH_mass1_complete,hosthalomass1_complete,hosthalostellarmass1_complete,hosthalogasmass1_complete,hosthalodmmass1_complete,BH_id2_complete,BH_mass2_complete,hosthalomass2_complete,hosthalostellarmass2_complete,hosthalogasmass2_complete,hosthalodmmass2_complete,file_id_complete
 
-def get_merger_events_from_snapshot(output_path,desired_redshift):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
-    print(output_snapshot,output_redshift)
-    tot_mergers=0
-    ID1=numpy.array([],dtype='uint64')
-    ID2=numpy.array([],dtype='uint64')
-    BH_Mass1=numpy.array([],dtype='float')
-    BH_Mass2=numpy.array([],dtype='float')
-
-    TaskID=numpy.array([],dtype='int')
-    Time=numpy.array([],dtype='float')
-    for i in range(0,16):
-        try:
-            if (output_snapshot>=10):
-                output_snapshot_str='%d'%output_snapshot
-            elif (output_snapshot<=9):
-                output_snapshot_str='0%d'%output_snapshot
-            print(output_snapshot_str)
-            g=h5py.File(output_path+'mergers_0%s/mergers_tab_0%s.%d.hdf5'%(output_snapshot_str,output_snapshot_str,i))
-            header=g['Header'].attrs
-            Merger=g.get('Merger')
-            print(list(Merger.keys()))
-            print(list(header))  
-            print("Number of mergers on File %d"%i,header.get('Nmergers_ThisFile'))
-            tot_mergers+=header.get('Nmergers_ThisFile')
-            ID1=numpy.append(ID1,Merger.get('ID1')[:])
-            ID2=numpy.append(ID2,Merger.get('ID2')[:])
-            BH_Mass1=numpy.append(BH_Mass1,Merger.get('BH_Mass1')[:])
-            BH_Mass2=numpy.append(BH_Mass2,Merger.get('BH_Mass2')[:])
-            TaskID=numpy.append(TaskID,Merger.get('TaskID')[:])
-            Time=numpy.append(Time,Merger.get('Time')[:])
-            #print(Merger.get('BH_mass1')[:])
-        except:
-            aa=1
-    print("Total number of mergers",tot_mergers)
-
-    mass_tuple=list(zip(BH_Mass1,BH_Mass2))
-    id_tuple=list(zip(ID1,ID2))
-
-        #primary_mass=numpy.array([numpy.amax([dat[0],dat[1]]) for dat in mass_tuple])
-        #secondary_mass=numpy.array([numpy.amin([dat[0],dat[1]]) for dat in mass_tuple])
-
-    primary_index=numpy.array([numpy.argmax([dat[0],dat[1]]) for dat in mass_tuple])
-    secondary_index=numpy.array([numpy.argmin([dat[0],dat[1]]) for dat in mass_tuple])
-
-    primary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,primary_index))])
-    secondary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,secondary_index))])
-
-    primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
-    secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
-    
-    Time_sorted=sort_X_based_on_Y(Time,Time)
-    primary_mass_sorted=sort_X_based_on_Y(primary_mass,Time)
-    secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,Time)
-    primary_id_sorted=sort_X_based_on_Y(primary_id,Time)
-    secondary_id_sorted=sort_X_based_on_Y(secondary_id,Time)
-    TaskID_sorted=sort_X_based_on_Y(TaskID,Time)
-    return Time_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,TaskID_sorted,0
-
                             
-def get_merger_events_from_snapshot(output_path,desired_redshift):
+def get_merger_events_from_snapshot(output_path,desired_redshift,SORT_PRIMARY_SECONDARY=0,HOSTS=0):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
     print(output_snapshot,output_redshift)
     tot_mergers=0
@@ -1394,6 +1301,17 @@ def get_merger_events_from_snapshot(output_path,desired_redshift):
     ID2=numpy.array([],dtype='uint64')
     BH_Mass1=numpy.array([],dtype='float')
     BH_Mass2=numpy.array([],dtype='float')
+    if(HOSTS):
+        BH_Mdot1=numpy.array([],dtype='float')
+        BH_Mdot2=numpy.array([],dtype='float')
+        BH_HostHaloMass1=numpy.array([],dtype='float')
+        BH_HostHaloMass2=numpy.array([],dtype='float')
+        BH_HostStellarMass1=numpy.array([],dtype='float')
+        BH_HostStellarMass2=numpy.array([],dtype='float')
+        BH_HostGasMass1=numpy.array([],dtype='float')
+        BH_HostGasMass2=numpy.array([],dtype='float')
+        BH_HostSFR1=numpy.array([],dtype='float')
+        BH_HostSFR2=numpy.array([],dtype='float')
 
     TaskID=numpy.array([],dtype='int')
     Time=numpy.array([],dtype='float')
@@ -1403,22 +1321,41 @@ def get_merger_events_from_snapshot(output_path,desired_redshift):
                 output_snapshot_str='%d'%output_snapshot
             elif (output_snapshot<=9):
                 output_snapshot_str='0%d'%output_snapshot
-            print(output_snapshot_str)
+            #print(output_snapshot_str)
             g=h5py.File(output_path+'mergers_0%s/mergers_tab_0%s.%d.hdf5'%(output_snapshot_str,output_snapshot_str,i))
             header=g['Header'].attrs
             Merger=g.get('Merger')
-            print(list(Merger.keys()))
-            print(list(header))  
-            print("Number of mergers on File %d"%i,header.get('Nmergers_ThisFile'))
+            #print(list(Merger.keys()))
+            #print(list(header))  
+            #print("Number of mergers on File %d"%i,header.get('Nmergers_ThisFile'))
             tot_mergers+=header.get('Nmergers_ThisFile')
             ID1=numpy.append(ID1,Merger.get('ID1')[:])
             ID2=numpy.append(ID2,Merger.get('ID2')[:])
+            
             BH_Mass1=numpy.append(BH_Mass1,Merger.get('BH_Mass1')[:])
             BH_Mass2=numpy.append(BH_Mass2,Merger.get('BH_Mass2')[:])
+            
+            if (HOSTS):
+                BH_Mdot1=numpy.append(BH_Mdot1,Merger.get('BH_Mdot1')[:])
+                BH_Mdot2=numpy.append(BH_Mdot2,Merger.get('BH_Mdot2')[:])
+
+                BH_HostHaloMass1=numpy.append(BH_HostHaloMass1,Merger.get('BH_HostHaloMass1')[:])
+                BH_HostHaloMass2=numpy.append(BH_HostHaloMass2,Merger.get('BH_HostHaloMass2')[:])
+
+                BH_HostStellarMass1=numpy.append(BH_HostStellarMass1,Merger.get('BH_HostStellarMass1')[:])
+                BH_HostStellarMass2=numpy.append(BH_HostStellarMass2,Merger.get('BH_HostStellarMass2')[:])
+
+                BH_HostGasMass1=numpy.append(BH_HostGasMass1,Merger.get('BH_HostGasMass1')[:])
+                BH_HostGasMass2=numpy.append(BH_HostGasMass2,Merger.get('BH_HostGasMass2')[:])
+
+                BH_HostSFR1=numpy.append(BH_HostSFR1,Merger.get('BH_HostSFR1')[:])
+                BH_HostSFR2=numpy.append(BH_HostSFR2,Merger.get('BH_HostSFR2')[:])
+
+                
             TaskID=numpy.append(TaskID,Merger.get('TaskID')[:])
             Time=numpy.append(Time,Merger.get('Time')[:])
-            #print(Merger.get('BH_mass1')[:])
-        except:
+            #print(Merger.get('Time')[:])
+        except TypeError:
             aa=1
     print("Total number of mergers",tot_mergers)
 
@@ -1437,15 +1374,22 @@ def get_merger_events_from_snapshot(output_path,desired_redshift):
     primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
     secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
     
-    Time_sorted=sort_X_based_on_Y(Time,Time)
-    primary_mass_sorted=sort_X_based_on_Y(primary_mass,Time)
-    secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,Time)
-    primary_id_sorted=sort_X_based_on_Y(primary_id,Time)
-    secondary_id_sorted=sort_X_based_on_Y(secondary_id,Time)
-    TaskID_sorted=sort_X_based_on_Y(TaskID,Time)
-    return Time_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,TaskID_sorted,0
+    #Time_sorted=sort_X_based_on_Y(Time,Time)
+    #primary_mass_sorted=sort_X_based_on_Y(primary_mass,Time)
+    #secondary_mass_sorted=sort_X_based_on_Y(secondary_mass,Time)
+    #primary_id_sorted=sort_X_based_on_Y(primary_id,Time)
+    #secondary_id_sorted=sort_X_based_on_Y(secondary_id,Time)
+    #TaskID_sorted=sort_X_based_on_Y(TaskID,Time)
+    if SORT_PRIMARY_SECONDARY:
+        return Time,primary_mass,secondary_mass,primary_id,secondary_id,TaskID,0
+    else:
+        if (HOSTS):
+            return Time,BH_Mass1,BH_Mass2,ID1,ID2,BH_Mdot1,BH_Mdot2,BH_HostHaloMass1,BH_HostHaloMass2,BH_HostStellarMass1,BH_HostStellarMass2,BH_HostGasMass1,BH_HostGasMass2,BH_HostSFR1,BH_HostSFR2,TaskID,0
+        else:
+            return Time,BH_Mass1,BH_Mass2,ID1,ID2,TaskID,0
 
-
+        
+        
 def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,mergers_from_snapshot=0,use_cleaned=0,get_all_blackhole_history=0,HDF5=0,ONLY_PROGENITORS=0,desired_id_redshift=0):
     def parse_id_col(BH_ids_as_string):
         return numpy.int(BH_ids_as_string[3:])
@@ -2288,7 +2232,7 @@ def trace_a_halo(basePath,halo_index_to_be_traced,initial_redshift,final_redshif
 
 
 def convert_merger_events_to_hdf5(basePath, dont_save_in_basePath=0, save_output_path='.'):
-    output_file_names=os.listdir(basePath+'blackhole_mergers/')
+    output_file_names=os.listdir(basePath+'/blackhole_mergers/')
     snapshot_space=[]
     redshift_space=[]
 
@@ -2304,9 +2248,9 @@ def convert_merger_events_to_hdf5(basePath, dont_save_in_basePath=0, save_output
 
     for name in output_file_names[:]:
         #print(name)
-        data=numpy.loadtxt(basePath+'blackhole_mergers/'+name)
+        data=numpy.loadtxt(basePath+'/blackhole_mergers/'+name)
         try:
-            if (data.shape==(6,)):
+            if (data.shape==(8,)):
                 file_id=numpy.array([data[0].astype(int)])
                 scale_fac=numpy.array([data[1]])
                 BH_id1=numpy.array([data[2].astype(int)])
@@ -2331,9 +2275,9 @@ def convert_merger_events_to_hdf5(basePath, dont_save_in_basePath=0, save_output
             N_empty+=1
             aaa=1
     if dont_save_in_basePath:
-        hf = h5py.File(save_output_path+'blackhole_mergers.hdf5','w')
+        hf = h5py.File(save_output_path+'/blackhole_mergers.hdf5','w')
     else: 
-        hf = h5py.File(basePath+'blackhole_mergers.hdf5','w')
+        hf = h5py.File(basePath+'/blackhole_mergers.hdf5','w')
     hf.create_dataset('FileID',data=file_id_complete)
     hf.create_dataset('ScaleFactor',data=scale_fac_complete)
     hf.create_dataset('BH_ID1',data=BH_id1_complete)
@@ -2344,7 +2288,7 @@ def convert_merger_events_to_hdf5(basePath, dont_save_in_basePath=0, save_output
     
     
 def convert_merger_hosts_to_hdf5(basePath):
-    output_file_names=os.listdir(basePath+'blackhole_mergerhosts/')
+    output_file_names=os.listdir(basePath+'/blackhole_mergerhosts/')
     snapshot_space=[]
     redshift_space=[]
 
@@ -2366,7 +2310,7 @@ def convert_merger_hosts_to_hdf5(basePath):
     hosthalodmmass2_complete=numpy.array([])
     N_empty=0
     for name in output_file_names[:]:
-        data=numpy.loadtxt(basePath+'blackhole_mergerhosts/'+name)
+        data=numpy.loadtxt(basePath+'/blackhole_mergerhosts/'+name)
 
         try:
             if (data.shape==(14,)):
