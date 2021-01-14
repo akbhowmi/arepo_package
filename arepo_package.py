@@ -129,9 +129,9 @@ def get_group_property(output_path,group_property,desired_redshift,list_all=True
         property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
     elif (file_format=='fof'):
         if (output_snapshot>=100):
-            groups_folder = basePath+'/groups_%d/'%output_snapshot
+            groups_folder = output_path+'/groups_%d/'%output_snapshot
        	else:
-       	    groups_folder = basePath+'/groups_0%d/'%output_snapshot
+       	    groups_folder = output_path+'/groups_0%d/'%output_snapshot
         all_files=os.listdir(groups_folder)
         property=numpy.array([])
         for file in all_files:
