@@ -123,12 +123,23 @@ def make_cuts(quantities,cut): #selects an array of quantities (argument 1) and 
     cutted_quantities=[quantity[cut] for quantity in quantities]
     return cutted_quantities
 
-def get_group_property(output_path,group_property,desired_redshift,list_all=True):
+def get_group_property(output_path,group_property,desired_redshift,list_all=True,file_format='fof_subfind'):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
-    property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
-   # if (list_all):
-   #     print('Below are the list of properties')
-   #     print(halos.keys())
+    if (file_format=='fof_subfind'):
+        property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
+    elif (file_format=='fof'):
+        if (output_snapshot>=100):
+            groups_folder = basePath+'/groups_%d/'%output_snapshot
+       	else:
+       	    groups_folder = basePath+'/groups_0%d/'%output_snapshot
+        all_files=os.listdir(groups_folder)
+        property=numpy.array([])
+        for file in all_files:
+            h=h5py.File(groups_folder+file)
+            Group=h.get('Group')
+            property=numpy.append(property,Group.get(group_property)[:])
+    else:
+        print("Error: Unrecognized file format")
     return property,output_redshift
 
 def get_subhalo_property(output_path,subhalo_property,desired_redshift,list_all=True):
