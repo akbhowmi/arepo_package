@@ -224,7 +224,10 @@ def construct_grid(final_positions,final_property,number_of_pixels,field,PARALLE
     
     proj_property=numpy.asarray(proj_property)
     print(proj_property)
-    proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=min(proj_property[proj_property>0])
+    if (field=='Metallicity'):
+        proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=min(proj_property[proj_property>0])
+    else:
+        proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19
     print(proj_property)
     Proj_property=proj_property.reshape(number_of_pixels,number_of_pixels)
 
