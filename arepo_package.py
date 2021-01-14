@@ -13,7 +13,7 @@ import os
 import scipy
 import matplotlib as mpl
 
-def get_snapshot_redshift_correspondence(output_path):
+def get_snapshot_redshift_correspondence(output_path,file_format='fof_subfind'):
     output_file_names=os.listdir(output_path)
 #    print(output_file_names)
 #    print(output_path)
@@ -28,7 +28,17 @@ def get_snapshot_redshift_correspondence(output_path):
             print("Warning: Ignoring filename:%s"%name)
     snapshot_space=numpy.sort(numpy.array(snapshot_space))
     for snapshot_number in snapshot_space:
-            header=il.groupcat.loadHeader(output_path,snapshot_number)
+            if (file_format=='fof_subfind'):
+                header=il.groupcat.loadHeader(output_path,snapshot_number)
+            if (file_format=='fof'):
+                if (snapshot_number >= 100):
+                    groups_folder = output_path+'/groups_%d/'%snapshot_number
+                    file = 'fof_tab_%d.0.hdf5'%snapshot_number
+                else:
+                    groups_folder = output_path+'/groups_0%d/'%snapshot_number
+                    file = 'fof_tab_0%d.0.hdf5'%snapshot_number
+                h=h5py.File(groups_folder+file)
+                header=dict(h['Header'].attrs.items())
             redshift=header.get('Redshift')   
             redshift_space.append(redshift)   
     return numpy.array(snapshot_space),numpy.array(redshift_space)
@@ -107,8 +117,8 @@ def load_snapshot_header(output_path,desired_redshift):
         print(header)
         return header
 
-def desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=True): 
-    snapshot_space,redshift_space=get_snapshot_redshift_correspondence(output_path)
+def desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=True,file_format='fof_subfind'): 
+    snapshot_space,redshift_space=get_snapshot_redshift_correspondence(output_path,file_format=file_format)
     redshift_difference=numpy.abs(redshift_space-desired_redshift)
     min_redshift_difference=numpy.amin(redshift_difference)
     output_snapshot=snapshot_space[redshift_difference==min_redshift_difference][0]
@@ -124,7 +134,7 @@ def make_cuts(quantities,cut): #selects an array of quantities (argument 1) and 
     return cutted_quantities
 
 def get_group_property(output_path,group_property,desired_redshift,list_all=True,file_format='fof_subfind'):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False,file_format=file_format)
     if (file_format=='fof_subfind'):
         property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
     elif (file_format=='fof'):
