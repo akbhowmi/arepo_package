@@ -133,7 +133,7 @@ def make_cuts(quantities,cut): #selects an array of quantities (argument 1) and 
     cutted_quantities=[quantity[cut] for quantity in quantities]
     return cutted_quantities
 
-def get_group_property(output_path,group_property,desired_redshift,list_all=True,file_format='fof_subfind'):
+def get_group_property(output_path,group_property,desired_redshift,list_all=True,file_format='fof_subfind',stack_style='hstack'):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False,file_format=file_format)
     if (file_format=='fof_subfind'):
         property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
@@ -143,11 +143,23 @@ def get_group_property(output_path,group_property,desired_redshift,list_all=True
        	else:
        	    groups_folder = output_path+'/groups_0%d/'%output_snapshot
         all_files=os.listdir(groups_folder)
-        property=numpy.array([])
-        for file in all_files:
+        property=[]
+        Nfiles=len(all_files)
+        for Nf in range(0,Nfiles):
+            if (output_snapshot>=100):
+               file = 'fof_tab_%d.%d.hdf5'%(output_snapshot,Nf)
+            else:
+               file = 'fof_tab_0%d.%d.hdf5'%(output_snapshot,Nf)
             h=h5py.File(groups_folder+file)
             Group=h.get('Group')
-            property=numpy.append(property,Group.get(group_property)[:])
+            property.append(Group.get(group_property)[:])
+        property=numpy.array(property)
+        if (stack_style == 'hstack'):
+            property=numpy.hstack(property)
+       	elif (stack_style == 'vstack'):
+            property=numpy.vstack(property)
+        else:
+            print ("Error: Invalid stack style , use 'vstack' or 'hstack'")    
     else:
         print("Error: Unrecognized file format")
     return property,output_redshift
@@ -543,14 +555,14 @@ def get_dark_matter_correlation_function_zoom(output_path,input_redshift,NBINS, 
 
 
 
-def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True,store_all_offsets=0, public_simulation=0):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
+def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True,store_all_offsets=0, public_simulation=0,file_format='fof_subfind'):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False,file_format=file_format)
     if (public_simulation==0):
         requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property)
 
     if (group_type=='groups'):
         if(public_simulation==0):              
-            group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
+            group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False,file_format=file_format,stack_style='vstack'))
             group_lengths=group_lengths[:,p_type] 
             if (store_all_offsets==0):
                 group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
