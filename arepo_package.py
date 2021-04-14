@@ -352,6 +352,30 @@ def get_probability_density(HM,Nbins,log_HM_min,log_HM_max,linear=0):
         norm=1
     return centers,HMF/norm/counts_sum,dHMF/norm/counts_sum,norm,counts_sum
 
+def get_probability_density_weighed(HM,weigh,Nbins,log_HM_min,log_HM_max,linear=0):
+    #print(HM)
+    
+    def extract(HM_min,HM_max):
+        mask=(HM>HM_min)&(HM<HM_max)
+        return (HM_min+HM_max)/2,sum(weigh[mask])
+    if (linear):
+        HM_bin=numpy.linspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
+    else:
+        HM_bin=numpy.logspace(log_HM_min,log_HM_max,Nbins,endpoint=True)
+    out=[extract(HM_bin[i],HM_bin[i+1]) for i in range(0,len(HM_bin)-1)]
+    #return out
+    centers=numpy.array(list(zip(*out))[0])
+    counts=numpy.array(list(zip(*out))[1])
+    counts_sum=numpy.sum(counts)
+    
+    HMF=counts
+    dHMF=numpy.sqrt(counts)
+    if (linear):
+        norm=numpy.diff(centers)[0]
+    else:
+        norm=1
+    return centers,HMF/norm/counts_sum,dHMF/norm/counts_sum,norm,counts_sum
+
 
 
 
@@ -434,6 +458,7 @@ def poiss(rmin,rmax,BOXSIZE):
 
     
 def correlate_info(data, NBINS, RMIN, RMAX, BOXSIZE, WRAP):
+    from kdcount import correlate
     if data is not None:
         if RMAX is None:
             RMAX = BOXSIZE
@@ -466,6 +491,7 @@ def correlate_info(data, NBINS, RMIN, RMAX, BOXSIZE, WRAP):
     
     
 def cross_correlate_info(data1,data2, NBINS, RMIN, RMAX, BOXSIZE, WRAP):
+    from kdcount import correlate
     if data1 is not None:
         if RMAX is None:
             RMAX = BOXSIZE
@@ -497,6 +523,7 @@ def cross_correlate_info(data1,data2, NBINS, RMIN, RMAX, BOXSIZE, WRAP):
         return None, None
     
 def get_dark_matter_correlation_function(output_path,input_redshift,NBINS, RMIN, RMAX, WRAP,subsample_factor):
+
     BOXSIZE=get_box_size(output_path)
     print("boxsize:",BOXSIZE)
     positions,output_redshift=get_particle_property(output_path,'Coordinates',1,input_redshift)
@@ -507,6 +534,7 @@ def get_dark_matter_correlation_function(output_path,input_redshift,NBINS, RMIN,
     return r,DD,RR,xi,dxi,output_redshift
 
 def get_dark_matter_correlation_function_zoom(output_path,input_redshift,NBINS, RMIN, RMAX, WRAP,subsample_factor):
+    from kdcount import correlate
 
     BOXSIZE=get_box_size(output_path)
     #input_redshift=2.0
@@ -882,7 +910,7 @@ def get_seeding_events(output_path):
         except IndexError:
             N_empty+=1
             aaa=1
-            print('Index err:', name)
+           # print('Index err:', name)
     
     return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,FOFTask_complete, file_id_complete,N_empty
 
@@ -947,7 +975,7 @@ def get_seeding_events2(output_path):
         except IndexError:
             N_empty+=1
             aaa=1
-            print('Index err:', name)
+            #print('Index err:', name)
     
     return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,FOFStarFormingGasMass_complete,FOFStarFormingGasMetallicity_complete,N_empty
 
@@ -2002,6 +2030,7 @@ def luminosity_function(HM,box_size,log_HM_min,log_HM_max,Nbins):
         return centers,HMF,dHMF        
     
 def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,min_edge,max_edge,Nbins,CENTER_AROUND='POTENTIAL_MINIMUM',p_id=0):
+    from kdcount import correlate
     def min_dis(median_position, position,box_size):
         pos_1=position-median_position
         pos_2=position-median_position+boxsize
@@ -2012,8 +2041,12 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
     boxsize=get_box_size(output_path)
     particle_property='Coordinates'
     group_positions,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)
-    particle_property='Masses'
-    group_mass,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)
+    if (p_type==1):
+        MassDM=load_snapshot_header(output_path,desired_redshift_of_selected_halo)['MassTable'][1]
+        group_mass=numpy.array([1.]*len(group_positions))*MassDM
+    else:
+        particle_property='Masses'
+        group_mass,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False) 
     particle_property='Potential'
     group_potential,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)
     if (CENTER_AROUND=='MOST_MASSIVE_BLACKHOLE'):
@@ -2028,9 +2061,10 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
         
         bh_positions,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)        
         particle_property='Masses'
+
         bh_masses,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False) 
         print("Calculating density around BH with ID:",(bh_IDs[bh_masses==numpy.amax(bh_masses)])[0])
-        center=(bh_positions[bh_IDs==p_id])[0]        
+        center=(bh_positions[bh_masses==numpy.amax(bh_masses)])[0]        
     if (CENTER_AROUND=='POTENTIAL_MINIMUM'):
         center=(group_positions[group_potential==numpy.amin(group_potential)])[0]
     transposed_group_positions=numpy.transpose(group_positions)
@@ -2055,7 +2089,7 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
     mass_distribution=numpy.array(mass_distribution)
     mass_density=mass_distribution/4./3.14/(10**bin_centers)**3/((numpy.diff(bin_centers))[0])/numpy.log(10)
     return bin_centers,mass_distribution,mass_density
-        
+                
         
 def find_closest_BH(position,All_Coordinates,All_IDs,matching_range):
     length_space=numpy.linspace(0,matching_range,matching_range)

@@ -100,13 +100,16 @@ def extract_slice(basePath,p_type,desired_center,desired_redshift,field,planeofs
         gas_temperature = g_minus_1*(internal_energy/ac.KB)*(10**10)*mu
         #print(gas_temperature)
         particle_property=gas_temperature
-    if (field=='Velocity Magnitude'):
+    if ((field=='Velocity Magnitude') | (field=='Velocities')):
         velocity,output_redshift=arepo_package.get_particle_property(basePath,'Velocities',p_type,desired_redshift,list_all=False) 
-        xvel=velocity[:,0]
-        yvel=velocity[:,1]
-        zvel=velocity[:,2]
-        mag_vel=numpy.sqrt((xvel**2)+(yvel**2)+(zvel**2))
-        particle_property=mag_vel
+        if (field=='Velocity Magnitude'):
+            xvel=velocity[:,0]
+            yvel=velocity[:,1]
+            zvel=velocity[:,2]
+            mag_vel=numpy.sqrt((xvel**2)+(yvel**2)+(zvel**2))
+            particle_property=mag_vel
+        if (field=='Velocities'):
+            particle_property=velocity
     print(output_redshift)
     positions_relative_to_center=positions-numpy.ravel(desired_center)
       
@@ -166,7 +169,7 @@ def apply_mask2(field,planeofsky_pos2,pixelsize_planeofsky2,planeofsky_pos1,pixe
 
 
 
-def construct_grid(final_positions,final_property,number_of_pixels,field,PARALLEL=0,np=1):
+def construct_grid(final_positions,final_property,number_of_pixels,field='.',PARALLEL=0,np=1):
     if (PARALLEL==0):
         print("property:",final_property[final_property>1e-12])    
 
@@ -213,8 +216,6 @@ def construct_grid(final_positions,final_property,number_of_pixels,field,PARALLE
                 mask=(mask1) & (mask2)
                 if (field=='Density'):
                     proj_property.append(numpy.sum(final_property[mask])/pixel_volume)
-                elif (field=='LymanWernerIntensity'):
-                    proj_property.append(numpy.average(final_property[mask]))
                 else:
                     proj_property.append(numpy.average(final_property[mask]))
 
@@ -244,20 +245,23 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
         fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax)
-            cbar.set_label(r'$\rho_{gas}$ ($M_{\odot}h^{3}kpc^{-3}$)',fontsize=40)
-            cbar.ax.tick_params(labelsize=30) 
+            cbar.set_label(r'$\rho_{gas}$ ($M_{\odot}h^{3}kpc^{-3}$)',fontsize=30)
+            cbar.ax.tick_params(labelsize=20) 
         #bh=plt.Circle((bhcoord[0],bhcoord[1]),0.5,color='black')
         #ax.add_artist(bh)
 
         
-    if (field=='LymanWernerIntensity'):
+    if ('LymanWernerIntensity' in field):
         print('making LymanWernerIntensity')
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='plasma')
         fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax)
-            cbar.set_label('$J/J_{21}$',fontsize=40)
-            cbar.ax.tick_params(labelsize=30)
+            if ('type2' in field):
+                cbar.set_label('$J/J_{21}$ (Pop II)',fontsize=30)
+            if ('type3' in field):
+                cbar.set_label('$J/J_{21}$ (Pop III)',fontsize=30)
+            cbar.ax.tick_params(labelsize=20)
         
         
     if (field=='Metallicity'):
@@ -266,8 +270,8 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
         fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax)
-            cbar.set_label('$Z/Z_{\odot}$',fontsize=40)
-            cbar.ax.tick_params(labelsize=30)
+            cbar.set_label('$Z/Z_{\odot}$',fontsize=30)
+            cbar.ax.tick_params(labelsize=20)
 
         #cbar.ax.set_ylim([cbar.norm(10e1),cbar.norm(10e-7)])
 
