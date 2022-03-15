@@ -66,7 +66,7 @@ def orient_plane(positions,perpendicular_vector):
     
     return new_positions
 
-def extract_slice(basePath,p_type,desired_center,desired_redshift,field,planeofsky_dimensions=(1000,1000),lineofsight_dimension=20,plane='xy',orient=0,get_full_box=0,only_zoom=0,HighResGasFractionThreshold=0.):
+def extract_slice(basePath,p_type,desired_center,desired_redshift,field,planeofsky_dimensions=(1000,1000),lineofsight_dimension=20,plane='xy',orient=0,get_full_box=0,only_zoom=0,HighResGasFractionThreshold=0.,angular_momentum_type=4,put_cut=0,cut=1):
     positions,output_redshift=arepo_package.get_particle_property(basePath,'Coordinates',p_type,desired_redshift,list_all=False)    
     if (only_zoom==1):
         HighResGasMass,output_redshift=arepo_package.get_particle_property(basePath,'HighResGasMass',p_type,desired_redshift,list_all=False)    
@@ -114,7 +114,7 @@ def extract_slice(basePath,p_type,desired_center,desired_redshift,field,planeofs
     positions_relative_to_center=positions-numpy.ravel(desired_center)
       
     if (orient):
-        perpendicular_vector=stellar_ang_mom(basePath,desired_redshift,desired_center)
+        perpendicular_vector=stellar_ang_mom(basePath,desired_redshift,desired_center,p_type=angular_momentum_type)
         positions_relative_to_center=orient_plane(positions_relative_to_center,perpendicular_vector)
          
     if (plane=='xy'):
@@ -144,6 +144,8 @@ def extract_slice(basePath,p_type,desired_center,desired_redshift,field,planeofs
         mask_zoom=HighResGasFraction>HighResGasFractionThreshold
         mask=mask&mask_zoom
         mask_lineofsight=mask_lineofsight&mask_zoom
+    if (put_cut==1):
+        mask=mask&cut
         
     
     if (get_full_box):
@@ -225,7 +227,7 @@ def construct_grid(final_positions,final_property,number_of_pixels,field='.',PAR
     
     proj_property=numpy.asarray(proj_property)
     print(proj_property)
-    if (field=='Metallicity'):
+    if (field=='Metallicit'):
         proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=min(proj_property[proj_property>0])
     else:
         proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19
@@ -235,7 +237,7 @@ def construct_grid(final_positions,final_property,number_of_pixels,field='.',PAR
    # proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19 
     return First,Second,Proj_property
 
-def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,colormap='Greys_r',valuemin=0.1,valuemax=1e6,alph=1,show_labels=1,show_ticks=1):
+def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,colormap='Greys_r',valuemin=0.1,valuemax=1e6,alph=1,show_labels=1,show_ticks=1,cbar_orient='horizontal'):
     if (apply_filter):
         Proj_property=gaussian_filter(proj_property,sigma=sigma_filter)
     if (field=='Density'):
@@ -244,9 +246,9 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=max(proj_property[proj_property>0])),cmap=colormap)
         fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
-            cbar=fig.colorbar(fig_object,ax=ax)
+            cbar=fig.colorbar(fig_object,ax=ax,orientation=cbar_orient)
             cbar.set_label(r'$\rho_{gas}$ ($M_{\odot}h^{3}kpc^{-3}$)',fontsize=30)
-            cbar.ax.tick_params(labelsize=20) 
+            cbar.ax.tick_params(labelsize=30) 
         #bh=plt.Circle((bhcoord[0],bhcoord[1]),0.5,color='black')
         #ax.add_artist(bh)
 
@@ -256,12 +258,12 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='plasma')
         fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
-            cbar=fig.colorbar(fig_object,ax=ax)
+            cbar=fig.colorbar(fig_object,ax=ax,orientation=cbar_orient)
             if ('type2' in field):
                 cbar.set_label('$J/J_{21}$ (Pop II)',fontsize=30)
             if ('type3' in field):
                 cbar.set_label('$J/J_{21}$ (Pop III)',fontsize=30)
-            cbar.ax.tick_params(labelsize=20)
+            cbar.ax.tick_params(labelsize=30)
         
         
     if (field=='Metallicity'):
@@ -269,9 +271,9 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='plasma')
         fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
-            cbar=fig.colorbar(fig_object,ax=ax)
+            cbar=fig.colorbar(fig_object,ax=ax,orientation=cbar_orient)
             cbar.set_label('$Z/Z_{\odot}$',fontsize=30)
-            cbar.ax.tick_params(labelsize=20)
+            cbar.ax.tick_params(labelsize=30)
 
         #cbar.ax.set_ylim([cbar.norm(10e1),cbar.norm(10e-7)])
 
@@ -290,11 +292,13 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
         cbar.set_label('SFR ($M_{\odot}/\mathrm{yr}^{-1}$)',fontsize=15)
     if (field=='SFR'):
         print('making SFR')
+        
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='viridis')
         fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
-        cbar=fig.colorbar(fig_object,ax=ax)
-        cbar.set_label('SFR ($M_{\odot}/\mathrm{yr}^{-1}$)',fontsize=15)
-        cbar.ax.tick_params(labelsize=30)    
+        if (show_colorbar):
+            cbar=fig.colorbar(fig_object,ax=ax,orientation=cbar_orient)
+            cbar.set_label('SFR ($M_{\odot}/\mathrm{yr}^{-1}$)',fontsize=30)
+            cbar.ax.tick_params(labelsize=30)    
    
     
     if (show_labels):
@@ -305,8 +309,7 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
 
 
     
-def stellar_ang_mom(basePath,desired_redshift,desired_center,box_length=40):
-    p_type=4
+def stellar_ang_mom(basePath,desired_redshift,desired_center,box_length=40,p_type=4):
     positions,output_redshift=arepo_package.get_particle_property(basePath,'Coordinates',p_type,desired_redshift,list_all=False)       
     masses,output_redshift=arepo_package.get_particle_property(basePath,'Masses',p_type,desired_redshift,list_all=False)
     velocities,output_redshift=arepo_package.get_particle_property(basePath,'Velocities',p_type,desired_redshift,list_all=False)
