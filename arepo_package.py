@@ -578,7 +578,12 @@ def get_dark_matter_correlation_function_zoom(output_path,input_redshift,NBINS, 
 
 
 
-
+def get_group_lengths_offsets(output_path,p_type,desired_redshift,maximum_index):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
+    group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
+    group_lengths=group_lengths[:,p_type] 
+    group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,maximum_index+1)])
+    return group_lengths[0:maximum_index+1],group_offsets,output_redshift
 
 
 
@@ -593,14 +598,14 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
             group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False,file_format=file_format,stack_style='vstack'))
             group_lengths=group_lengths[:,p_type] 
             if (store_all_offsets==0):
-                group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
+                    group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
             else:
-                if (os.path.exists(output_path+'/offsets_%d.npy'%p_type)):
-                    group_offsets=numpy.load(output_path+'/offsets_%d.npy'%p_type)
+                if (os.path.exists(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot))):
+                    group_offsets=numpy.load(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot))
                     print("offsets were already there")
                 else:
                     group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
-                    numpy.save(output_path+'/offsets_%d.npy'%p_type,group_offsets)
+                    numpy.save(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot),group_offsets)
                     print("Storing the offsets")
             group_particles=requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]]
         else:
@@ -978,6 +983,78 @@ def get_seeding_events2(output_path):
             #print('Index err:', name)
     
     return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,file_id_complete,FOFStarFormingGasMass_complete,FOFStarFormingGasMetallicity_complete,N_empty
+
+
+
+def get_seeding_events3(output_path):
+
+    output_file_names=os.listdir(output_path+'blackhole_seeding2/')
+    snapshot_space=[]
+    redshift_space=[]
+
+    file_id_complete=numpy.array([],dtype=int)
+    scale_fac_complete=numpy.array([])
+    BH_id_complete=numpy.array([],dtype=int)
+    StellarMetallicity_complete=numpy.array([])
+    SFR_complete=numpy.array([])
+    StellarMass_complete=numpy.array([])
+    FOFDMmass_complete=numpy.array([])
+    GasMetallicity_complete=numpy.array([])
+    FOFStarFormingGasMass_complete=numpy.array([])
+    FOFStarFormingGasMetallicity_complete=numpy.array([])
+    #BH_mass2_complete=numpy.array([])
+    FOFStarFormingMetalFreeGasMass_complete=numpy.array([])
+    N_empty=0
+
+    for name in output_file_names[:]:
+        data=numpy.loadtxt(output_path+'blackhole_seeding2/'+name)
+
+        try:
+        #for ii in [1]:
+            if (data.shape==(11,)):
+                file_id=numpy.array([data[0].astype(int)])
+                scale_fac=numpy.array([data[1]])
+                BH_id=numpy.array([data[2].astype(int)])
+                StellarMass=numpy.array([data[3]])
+                StellarMetallicity=numpy.array([data[4]])
+                SFR=numpy.array([data[5]])
+                FOFDMmass=numpy.array([data[6]])
+                GasMetallicity=numpy.array([data[7]])
+                FOFStarFormingGasMass=numpy.array([data[8]]) 
+                FOFStarFormingGasMetallicity=numpy.array([data[9]])
+                FOFStarFormingMetalFreeGasMass=numpy.array([data[10]])
+            else:    
+                file_id=data[:,0].astype(int)
+                scale_fac=data[:,1]
+                BH_id=data[:,2].astype(int)
+                StellarMass=data[:,3]    
+                StellarMetallicity=data[:,4]
+                SFR=data[:,5]
+                FOFDMmass=data[:,6]
+                GasMetallicity=data[:,7]
+                FOFStarFormingGasMass=data[:,8]
+                FOFStarFormingGasMetallicity=data[:,9]
+                FOFStarFormingMetalFreeGasMass=data[:,10]
+            file_id_complete=numpy.append(file_id_complete,file_id)
+            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+            BH_id_complete=numpy.append(BH_id_complete,BH_id)
+            #BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
+            StellarMetallicity_complete=numpy.append(StellarMetallicity_complete,StellarMetallicity)
+            SFR_complete=numpy.append(SFR_complete,SFR) 
+            StellarMass_complete=numpy.append(StellarMass_complete,StellarMass)
+            FOFDMmass_complete=numpy.append(FOFDMmass_complete,FOFDMmass)
+            GasMetallicity_complete=numpy.append(GasMetallicity_complete,GasMetallicity)
+            FOFStarFormingGasMass_complete=numpy.append(FOFStarFormingGasMass_complete,FOFStarFormingGasMass)
+            FOFStarFormingMetalFreeGasMass_complete=numpy.append(FOFStarFormingMetalFreeGasMass_complete,FOFStarFormingMetalFreeGasMass)
+            FOFStarFormingGasMetallicity_complete=numpy.append(FOFStarFormingGasMetallicity_complete,FOFStarFormingGasMetallicity)
+        except IndexError:
+            N_empty+=1
+            aaa=1
+            #print('Index err:', name)
+    
+    return scale_fac_complete,BH_id_complete,StellarMass_complete,StellarMetallicity_complete,SFR_complete,FOFDMmass_complete,GasMetallicity_complete,file_id_complete,FOFStarFormingGasMass_complete,FOFStarFormingGasMetallicity_complete,FOFStarFormingMetalFreeGasMass_complete,N_empty
+
+
 
 
 def get_phantommerger_events(output_path,get_primary_secondary_indices=0,HDF5=0,SORT_PRIMARY_SECONDARY=0):
@@ -1544,6 +1621,7 @@ def get_blackhole_history_high_res_all_progenitors(output_path,desired_id,merger
                     rhos_for_id=numpy.append(rhos_for_id,rhos[final_extract])
                     sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds[final_extract])
                 except:
+                    print("Warning, this file is not read")
                     aa=1
             
     return BH_ids_for_id,scale_factors_for_id,BH_masses_for_id,BH_mdots_for_id,rhos_for_id,sound_speeds_for_id,merging_times
@@ -2049,24 +2127,30 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
         group_mass,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False) 
     particle_property='Potential'
     group_potential,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)
+
+    if (p_type==4):
+        particle_property='GFM_StellarFormationTime'       
+        GFM_StellarFormationTime,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)
+        mask=GFM_StellarFormationTime>0
+        group_potential=group_potential[mask]
+        group_mass=group_mass[mask]
+        group_positions=group_positions[mask]
+    
     if (CENTER_AROUND=='MOST_MASSIVE_BLACKHOLE'):
-
-        particle_property='ParticleIDs'
-        
-        bh_IDs,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)        
-
-        
-        
-        particle_property='Coordinates'
-        
+        particle_property='ParticleIDs'        
+        bh_IDs,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)                
+        particle_property='Coordinates'        
         bh_positions,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)        
         particle_property='Masses'
-
         bh_masses,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False) 
         print("Calculating density around BH with ID:",(bh_IDs[bh_masses==numpy.amax(bh_masses)])[0])
         center=(bh_positions[bh_masses==numpy.amax(bh_masses)])[0]        
     if (CENTER_AROUND=='POTENTIAL_MINIMUM'):
-        center=(group_positions[group_potential==numpy.amin(group_potential)])[0]
+        particle_property='Coordinates'        
+        dm_positions,output_redshift=get_particle_property_within_groups(output_path,particle_property,1,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)        
+        particle_property='Potential' 
+        dm_potential,output_redshift=get_particle_property_within_groups(output_path,particle_property,1,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)        
+        center=(dm_positions[dm_potential==numpy.amin(dm_potential)])[0]
     transposed_group_positions=numpy.transpose(group_positions)
     vectorized_min_dis = numpy.vectorize(min_dis)
     x_dis=vectorized_min_dis(center[0],transposed_group_positions[0],boxsize)
@@ -2089,6 +2173,81 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
     mass_distribution=numpy.array(mass_distribution)
     mass_density=mass_distribution/4./3.14/(10**bin_centers)**3/((numpy.diff(bin_centers))[0])/numpy.log(10)
     return bin_centers,mass_distribution,mass_density
+
+
+def get_general_profile(output_path,desired_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,min_edge,max_edge,Nbins,CENTER_AROUND='POTENTIAL_MINIMUM',p_id=0,OPERATION='AVERAGE'):
+    from kdcount import correlate
+    def min_dis(median_position, position,box_size):
+        pos_1=position-median_position
+        pos_2=position-median_position+boxsize
+        pos_3=position-median_position-boxsize
+        new_position_options=numpy.array([pos_1,pos_2,pos_3])
+        get_minimum_distance=numpy.argmin(numpy.abs(new_position_options))
+        return new_position_options[get_minimum_distance]
+    boxsize=get_box_size(output_path)
+    particle_property='Coordinates'
+    group_positions,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)
+    if (p_type==1):
+        MassDM=load_snapshot_header(output_path,desired_redshift_of_selected_halo)['MassTable'][1]
+        group_mass=numpy.array([1.]*len(group_positions))*MassDM
+    else:
+        particle_property='Masses'
+        group_mass,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False) 
+
+        particle_property=desired_property
+        group_desired_property,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False) 
+    particle_property='Potential'
+    group_potential,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)
+
+    if (p_type==4):
+        particle_property='GFM_StellarFormationTime'       
+        GFM_StellarFormationTime,output_redshift=get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)
+        mask=GFM_StellarFormationTime>0
+        group_potential=group_potential[mask]
+        group_mass=group_mass[mask]
+        group_positions=group_positions[mask]
+    
+    if (CENTER_AROUND=='MOST_MASSIVE_BLACKHOLE'):
+        particle_property='ParticleIDs'        
+        bh_IDs,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)                
+        particle_property='Coordinates'        
+        bh_positions,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)        
+        particle_property='Masses'
+        bh_masses,output_redshift=get_particle_property_within_groups(output_path,particle_property,5,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False) 
+        print("Calculating density around BH with ID:",(bh_IDs[bh_masses==numpy.amax(bh_masses)])[0])
+        center=(bh_positions[bh_masses==numpy.amax(bh_masses)])[0]        
+    if (CENTER_AROUND=='POTENTIAL_MINIMUM'):
+        particle_property='Coordinates'        
+        dm_positions,output_redshift=get_particle_property_within_groups(output_path,particle_property,1,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)        
+        particle_property='Potential' 
+        dm_potential,output_redshift=get_particle_property_within_groups(output_path,particle_property,1,desired_redshift_of_selected_halo,index_of_selected_halo,group_type='groups',list_all=False)        
+        center=(dm_positions[dm_potential==numpy.amin(dm_potential)])[0]
+    transposed_group_positions=numpy.transpose(group_positions)
+    vectorized_min_dis = numpy.vectorize(min_dis)
+    x_dis=vectorized_min_dis(center[0],transposed_group_positions[0],boxsize)
+    y_dis=vectorized_min_dis(center[1],transposed_group_positions[1],boxsize)
+    z_dis=vectorized_min_dis(center[2],transposed_group_positions[2],boxsize)
+    log_distances=numpy.log10(numpy.sqrt(x_dis**2+y_dis**2+z_dis**2))
+
+    log_distance_bins=numpy.linspace(min_edge,max_edge,Nbins)
+    binning=correlate.RBinning(log_distance_bins)
+    bin_edges=binning.edges
+    bin_centers=binning.centers
+    mass_distribution=[]
+    for i in range(0,len(bin_edges)-1):
+        left=bin_edges[i]
+        right=bin_edges[i+1]
+        mask=(log_distances>left)&(log_distances<right)
+        if (OPERATION=='AVERAGE'):
+            mass_inside_bin=numpy.sum(group_desired_property[mask]*group_mass[mask])/numpy.sum(group_mass[mask])
+        elif (OPERATION=='SUM'):
+            mass_inside_bin=numpy.sum(group_desired_property[mask])
+        mass_distribution.append(mass_inside_bin)
+
+    mass_distribution=numpy.array(mass_distribution)
+    return bin_centers,mass_distribution
+
+
                 
         
 def find_closest_BH(position,All_Coordinates,All_IDs,matching_range):
