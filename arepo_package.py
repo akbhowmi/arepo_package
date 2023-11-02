@@ -5,40 +5,59 @@ import sys
 #sys.path.append('/home/aklantbhowmick/anaconda3/envs/nbodykit-env/lib/python3.6/site-packages/')
 
 #%pylab inline
-import h5py
+import matplotlib.cm as cm  
 import numpy
 import illustris_python as il
 import os
 #from kdcount import correlate
 import scipy
 import matplotlib as mpl
+import h5py
 
 def get_snapshot_redshift_correspondence(output_path,file_format='fof_subfind'):
     output_file_names=os.listdir(output_path)
-#    print(output_file_names)
+#    print(output_foutput_test_0.32_1.83_new_no_ex_new9_bFOF3_env_seed5.00le_names)
 #    print(output_path)
     snapshot_space=[]
     redshift_space=[]
     for name in output_file_names:
         if ('groups' in name):
-          try:
-            snapshot_number=int(name[7:])
-            snapshot_space.append(snapshot_number)
-          except:
-            print("Warning: Ignoring filename:%s"%name)
+            try:
+                snapshot_number=int(name[7:])
+                snapshot_space.append(snapshot_number)
+            except:
+                aaa=1
+                #print("Warning: Ignoring filename:%s"%name)
     snapshot_space=numpy.sort(numpy.array(snapshot_space))
     for snapshot_number in snapshot_space:
-            if (file_format=='fof_subfind'):
+            if (file_format=='fof_subfind') | (file_format=='fof_sub_subfind'):
                 header=il.groupcat.loadHeader(output_path,snapshot_number)
-            if (file_format=='fof'):
+            elif (file_format=='fof'):
                 if (snapshot_number >= 100):
                     groups_folder = output_path+'/groups_%d/'%snapshot_number
                     file = 'fof_tab_%d.0.hdf5'%snapshot_number
-                else:
+                elif (snapshot_number >= 10):
                     groups_folder = output_path+'/groups_0%d/'%snapshot_number
                     file = 'fof_tab_0%d.0.hdf5'%snapshot_number
+                else:
+                    groups_folder = output_path+'/groups_00%d/'%snapshot_number
+                    file = 'fof_tab_00%d.0.hdf5'%snapshot_number
                 h=h5py.File(groups_folder+file)
                 header=dict(h['Header'].attrs.items())
+                h.close()
+            elif (file_format=='fof_sub'):
+                if (snapshot_number >= 100):
+                    groups_folder = output_path+'/groups_sub_%d/'%snapshot_number
+                    file = 'fof_sub_tab_%d.0.hdf5'%snapshot_number
+                elif (snapshot_number >= 10):
+                    groups_folder = output_path+'/groups_sub_0%d/'%snapshot_number
+                    file = 'fof_sub_tab_0%d.0.hdf5'%snapshot_number
+                else:
+                    groups_folder = output_path+'/groups_sub_00%d/'%snapshot_number
+                    file = 'fof_sub_tab_00%d.0.hdf5'%snapshot_number
+                h=h5py.File(groups_folder+file)
+                header=dict(h['Header'].attrs.items())
+                h.close()
             redshift=header.get('Redshift')   
             redshift_space.append(redshift)   
     return numpy.array(snapshot_space),numpy.array(redshift_space)
@@ -81,6 +100,23 @@ def make_median_with_bootstrap(x_values,y_values,x_min,x_max,nbins,N_bootstrap):
     IQR_space=numpy.array(IQR_space)
     return x_space,diff,median_space,err_space,IQR_space
 
+def make_median_with_bootstrap(x_values,y_values,x_min,x_max,nbins,N_bootstrap):
+    x_space=numpy.linspace(x_min,x_max,nbins)
+    diff=numpy.diff(x_space)[0]
+    median_space=[]
+    err_space=[]
+    IQR_space=[]
+    for x in x_space:
+        mask=(x_values>(x-diff/2)) & (x_values<(x+diff/2))
+        median,err=get_bootstrap_error(y_values[mask],N_bootstrap,'mean',GET_CENTRAL=1)
+        IQR_space.append(get_IQR(y_values[mask],75))
+        median_space.append(median)
+        err_space.append(err)
+    median_space=numpy.array(median_space)
+    err_space=numpy.array(err_space)
+    IQR_space=numpy.array(IQR_space)
+    return x_space,diff,median_space,err_space,IQR_space
+
 
 
 def get_box_size(output_path):
@@ -88,20 +124,22 @@ def get_box_size(output_path):
     snapshot_space=[]
     redshift_space=[]
     for name in output_file_names:
-        if ('groups' in name):
-            snapshot_number=int(name[7:])
-            header=il.groupcat.loadHeader(output_path,snapshot_number)
-            box_size=header.get('BoxSize')   
-            return box_size
-        
-        
+        try:
+            if ('groups' in name):
+                snapshot_number=int(name[7:])
+                header=il.groupcat.loadHeader(output_path,snapshot_number)
+                box_size=header.get('BoxSize')   
+                return box_size
+        except:
+            continue
+             
         
 def get_cosmology(output_path):
     output_file_names=os.listdir(output_path)
     snapshot_space=[]
     redshift_space=[]
     for name in output_file_names:
-        if ('groups' in name):
+        if ('groups' in name) & ('groups_sub' not in name):
             snapshot_number=int(name[7:])
             header=il.groupcat.loadHeader(output_path,snapshot_number)
             om0=header.get('Omega0')
@@ -137,43 +175,84 @@ def get_group_property(output_path,group_property,desired_redshift,list_all=True
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False,file_format=file_format)
     if (file_format=='fof_subfind'):
         property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
+    elif (file_format=='fof_sub_subfind'):
+        property = il.groupcat.loadHalos2(output_path,output_snapshot,fields=group_property)
     elif (file_format=='fof'):
-        if (output_snapshot>=100):
-            groups_folder = output_path+'/groups_%d/'%output_snapshot
-       	else:
-       	    groups_folder = output_path+'/groups_0%d/'%output_snapshot
+        property = il.groupcat.loadHalos3(output_path,output_snapshot,fields=group_property)
+    elif (file_format=='fof_sub'):
+        property = il.groupcat.loadHalos4(output_path,output_snapshot,fields=group_property)
+    else:
+        print("Error: Unrecognized file format")
+    return property,output_redshift
+'''
+    elif ('fof' in file_format):
+        if(file_format=='fof'):
+            if (output_snapshot>=100):
+                groups_folder = output_path+'/groups_%d/'%output_snapshot
+       	    elif(output_snapshot>=10):
+       	        groups_folder = output_path+'/groups_0%d/'%output_snapshot
+            else:
+       	        groups_folder = output_path+'/groups_00%d/'%output_snapshot
+        if(file_format=='fof_sub'):
+            if (output_snapshot>=100):
+                groups_folder = output_path+'/groups_sub_%d/'%output_snapshot
+            elif (output_snapshot>=10):
+                groups_folder = output_path+'/groups_sub_0%d/'%output_snapshot
+       	    else:
+       	        groups_folder = output_path+'/groups_sub_00%d/'%output_snapshot
         all_files=os.listdir(groups_folder)
         property=[]
         Nfiles=len(all_files)
         for Nf in range(0,Nfiles):
-            if (output_snapshot>=100):
-               file = 'fof_tab_%d.%d.hdf5'%(output_snapshot,Nf)
-            else:
-               file = 'fof_tab_0%d.%d.hdf5'%(output_snapshot,Nf)
+            if(file_format=='fof'):
+                if (output_snapshot>=100):
+                    file = 'fof_tab_%d.%d.hdf5'%(output_snapshot,Nf)
+                elif (output_snapshot>=10):
+                    file = 'fof_tab_0%d.0%d.hdf5'%(output_snapshot,Nf)
+                else:
+                    file = 'fof_tab_00%d.%d.hdf5'%(output_snapshot,Nf)
+                                        
+            if(file_format=='fof_sub'):
+                if (output_snapshot>=100):
+                    file = 'fof_sub_tab_%d.%d.hdf5'%(output_snapshot,Nf)
+                elif (output_snapshot>=10):
+                    file = 'fof_sub_tab_0%d.%d.hdf5'%(output_snapshot,Nf)
+                else:
+                    file = 'fof_sub_tab_00%d.%d.hdf5'%(output_snapshot,Nf)
             h=h5py.File(groups_folder+file)
             Group=h.get('Group')
-            property.append(Group.get(group_property)[:])
+            try:
+                property.append(Group.get(group_property)[:])
+            except:
+                aaa=0
         property=numpy.array(property)
+   
         if (stack_style == 'hstack'):
             property=numpy.hstack(property)
-       	elif (stack_style == 'vstack'):
-            property=numpy.vstack(property)
-        else:
-            print ("Error: Invalid stack style , use 'vstack' or 'hstack'")    
+        elif (stack_style == 'vstack'):
+                property=numpy.vstack(property)
+            else:
+                print ("Error: Invalid stack style , use 'vstack' or 'hstack'")    
     else:
         print("Error: Unrecognized file format")
     return property,output_redshift
+'''
 
-def get_subhalo_property(output_path,subhalo_property,desired_redshift,list_all=True):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)      
-    property = il.groupcat.loadSubhalos(output_path,output_snapshot,fields=subhalo_property)
-#    if (list_all):
+
+def get_subhalo_property(output_path,subhalo_property,desired_redshift,list_all=True,file_format='fof_subfind'):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)  
+    if (file_format=='fof_subfind'):
+        property = il.groupcat.loadSubhalos(output_path,output_snapshot,fields=subhalo_property)
+    elif(file_format=='fof_sub_subfind'):
+        property = il.groupcat.loadSubhalos2(output_path,output_snapshot,fields=subhalo_property)
+        
+        #    if (list_all):
 #        print('Below are the list of properties')
 #        print(subhalos.keys())
     return property,output_redshift
 
-def get_particle_property(output_path,particle_property,p_type,desired_redshift,list_all=True):
-    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all)
+def get_particle_property(output_path,particle_property,p_type,desired_redshift,list_all=True,file_format='fof_subfind'):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,file_format=file_format)
 #    if (list_all):
 #        print('Below are the list of properties for ptype ',p_type)
 #        print(il.snapshot.loadSubset(output_path,output_snapshot,p_type).keys())
@@ -670,7 +749,7 @@ def reposition(original_position,scaled_halo_centers,boxsize):
     return numpy.transpose(numpy.array([x_pos,y_pos,z_pos]))
         
         
-def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,scaled_halo_centers,colormap='Blues_r',opacity=1,about_COM=True,REPOSITION=False):
+def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,scaled_halo_centers=1.,colormap='Blues_r',opacity=1,about_COM=True,REPOSITION=False,show_image=0):
     x_pos=Coordinates[:,0]
     y_pos=Coordinates[:,1]
     z_pos=Coordinates[:,2]
@@ -720,13 +799,13 @@ def make_image(Coordinates,Coordinates_for_COM,plane,obj,boxsize,NBINS,scaled_ha
 
     #plane='xz'
 
-
-    if (plane=='xy'):
-        obj.hist2d(x_pos_wrapped,y_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
-    if (plane=='yz'):
-        obj.hist2d(y_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
-    if (plane=='xz'):
-        obj.hist2d(x_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
+    if(show_image==1):
+        if (plane=='xy'):
+            obj.hist2d(x_pos_wrapped,y_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
+        if (plane=='yz'):
+            obj.hist2d(y_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
+        if (plane=='xz'):
+            obj.hist2d(x_pos_wrapped,z_pos_wrapped, bins=(NBINS,NBINS), norm=mpl.colors.LogNorm(),cmap=colormap,alpha=opacity);
         
     return numpy.array([x_pos_wrapped,y_pos_wrapped,z_pos_wrapped])
 
@@ -876,7 +955,7 @@ def get_seeding_events(output_path):
 
         try:
         #for ii in [1]:
-            if (data.shape==(9,)):
+            if (data.shape==(11,)):
                 file_id=numpy.array([data[0].astype(int)])
                 scale_fac=numpy.array([data[1]])
                 BH_id=numpy.array([data[2].astype(int)])
@@ -921,7 +1000,7 @@ def get_seeding_events(output_path):
 
 def get_seeding_events2(output_path):
 
-    output_file_names=os.listdir(output_path+'blackhole_seeding2/')
+    output_file_names=os.listdir(output_path+'blackhole_seeding2_backup/')
     snapshot_space=[]
     redshift_space=[]
 
@@ -940,8 +1019,10 @@ def get_seeding_events2(output_path):
     N_empty=0
 
     for name in output_file_names[:]:
-        data=numpy.loadtxt(output_path+'blackhole_seeding2/'+name)
-
+        try:
+            data=numpy.loadtxt(output_path+'blackhole_seeding2/'+name)
+        except:
+            iii=1
         try:
         #for ii in [1]:
             if (data.shape==(11,)):
@@ -986,9 +1067,9 @@ def get_seeding_events2(output_path):
 
 
 
-def get_seeding_events3(output_path):
+def get_seeding_events3(output_path,GET_ENVIRONMENT=0):
 
-    output_file_names=os.listdir(output_path+'blackhole_seeding2/')
+    output_file_names=os.listdir(output_path+'blackhole_seeding2_backup/')
     snapshot_space=[]
     redshift_space=[]
 
@@ -1004,14 +1085,18 @@ def get_seeding_events3(output_path):
     FOFStarFormingGasMetallicity_complete=numpy.array([])
     #BH_mass2_complete=numpy.array([])
     FOFStarFormingMetalFreeGasMass_complete=numpy.array([])
+    if(GET_ENVIRONMENT):
+        FOFNumberOfMajorNeighbors_complete=numpy.array([])
+    
     N_empty=0
 
     for name in output_file_names[:]:
-        data=numpy.loadtxt(output_path+'blackhole_seeding2/'+name)
-
         try:
+            data=numpy.loadtxt(output_path+'blackhole_seeding2_backup/'+name)
+
+
         #for ii in [1]:
-            if (data.shape==(11,)):
+            if (data.shape==(11+GET_ENVIRONMENT,)):
                 file_id=numpy.array([data[0].astype(int)])
                 scale_fac=numpy.array([data[1]])
                 BH_id=numpy.array([data[2].astype(int)])
@@ -1023,6 +1108,8 @@ def get_seeding_events3(output_path):
                 FOFStarFormingGasMass=numpy.array([data[8]]) 
                 FOFStarFormingGasMetallicity=numpy.array([data[9]])
                 FOFStarFormingMetalFreeGasMass=numpy.array([data[10]])
+                if(GET_ENVIRONMENT):
+                    FOFNumberOfMajorNeighbors=numpy.array([data[11]])
             else:    
                 file_id=data[:,0].astype(int)
                 scale_fac=data[:,1]
@@ -1035,6 +1122,8 @@ def get_seeding_events3(output_path):
                 FOFStarFormingGasMass=data[:,8]
                 FOFStarFormingGasMetallicity=data[:,9]
                 FOFStarFormingMetalFreeGasMass=data[:,10]
+                if(GET_ENVIRONMENT):
+                    FOFNumberOfMajorNeighbors=data[:,11]
             file_id_complete=numpy.append(file_id_complete,file_id)
             scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
             BH_id_complete=numpy.append(BH_id_complete,BH_id)
@@ -1047,12 +1136,95 @@ def get_seeding_events3(output_path):
             FOFStarFormingGasMass_complete=numpy.append(FOFStarFormingGasMass_complete,FOFStarFormingGasMass)
             FOFStarFormingMetalFreeGasMass_complete=numpy.append(FOFStarFormingMetalFreeGasMass_complete,FOFStarFormingMetalFreeGasMass)
             FOFStarFormingGasMetallicity_complete=numpy.append(FOFStarFormingGasMetallicity_complete,FOFStarFormingGasMetallicity)
-        except IndexError:
+            if(GET_ENVIRONMENT):
+                FOFNumberOfMajorNeighbors_complete=numpy.append(FOFNumberOfMajorNeighbors_complete,FOFNumberOfMajorNeighbors)
+        except:
+            print(name)
             N_empty+=1
             aaa=1
             #print('Index err:', name)
-    
+    if(GET_ENVIRONMENT):
+        return scale_fac_complete,BH_id_complete,StellarMass_complete,StellarMetallicity_complete,SFR_complete,FOFDMmass_complete,GasMetallicity_complete,file_id_complete,FOFStarFormingGasMass_complete,FOFStarFormingGasMetallicity_complete,FOFStarFormingMetalFreeGasMass_complete,N_empty,FOFNumberOfMajorNeighbors_complete    
     return scale_fac_complete,BH_id_complete,StellarMass_complete,StellarMetallicity_complete,SFR_complete,FOFDMmass_complete,GasMetallicity_complete,file_id_complete,FOFStarFormingGasMass_complete,FOFStarFormingGasMetallicity_complete,FOFStarFormingMetalFreeGasMass_complete,N_empty
+
+
+
+def get_seeding_events4(output_path,GET_ENVIRONMENT=0):
+
+    output_file_names=os.listdir(output_path+'blackhole_seeding2_backup/')
+    snapshot_space=[]
+    redshift_space=[]
+
+    file_id_complete=numpy.array([],dtype=int)
+    scale_fac_complete=numpy.array([])
+    BH_id_complete=numpy.array([],dtype=int)
+    StellarMetallicity_complete=numpy.array([])
+    SFR_complete=numpy.array([])
+    StellarMass_complete=numpy.array([])
+    FOFDMmass_complete=numpy.array([])
+    GasMetallicity_complete=numpy.array([])
+    FOFStarFormingGasMass_complete=numpy.array([])
+    FOFStarFormingGasMetallicity_complete=numpy.array([])
+    #BH_mass2_complete=numpy.array([])
+    FOFStarFormingMetalFreeGasMass_complete=numpy.array([])
+    FOFNumberOfMajorNeighbors_complete=numpy.array([])
+    FOFDrawnSeedMass_complete=numpy.array([])
+    
+    N_empty=0
+
+    for name in output_file_names[:]:
+        #print(name)
+        data=numpy.loadtxt(output_path+'blackhole_seeding2_backup/'+name)
+
+        try:
+        #for ii in [1]:
+            if (data.shape==(13,)):
+                file_id=numpy.array([data[0].astype(int)])
+                scale_fac=numpy.array([data[1]])
+                BH_id=numpy.array([data[2].astype(int)])
+                StellarMass=numpy.array([data[3]])
+                StellarMetallicity=numpy.array([data[4]])
+                SFR=numpy.array([data[5]])
+                FOFDMmass=numpy.array([data[6]])
+                GasMetallicity=numpy.array([data[7]])
+                FOFStarFormingGasMass=numpy.array([data[8]]) 
+                FOFStarFormingGasMetallicity=numpy.array([data[9]])
+                FOFStarFormingMetalFreeGasMass=numpy.array([data[10]])
+                FOFNumberOfMajorNeighbors=numpy.array([data[11]])
+                FOFDrawnSeedMass=numpy.array([data[12]])
+            else:    
+                file_id=data[:,0].astype(int)
+                scale_fac=data[:,1]
+                BH_id=data[:,2].astype(int)
+                StellarMass=data[:,3]    
+                StellarMetallicity=data[:,4]
+                SFR=data[:,5]
+                FOFDMmass=data[:,6]
+                GasMetallicity=data[:,7]
+                FOFStarFormingGasMass=data[:,8]
+                FOFStarFormingGasMetallicity=data[:,9]
+                FOFStarFormingMetalFreeGasMass=data[:,10]
+                FOFNumberOfMajorNeighbors=data[:,11]
+                FOFDrawnSeedMass=data[:,12]
+            file_id_complete=numpy.append(file_id_complete,file_id)
+            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+            BH_id_complete=numpy.append(BH_id_complete,BH_id)
+            #BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
+            StellarMetallicity_complete=numpy.append(StellarMetallicity_complete,StellarMetallicity)
+            SFR_complete=numpy.append(SFR_complete,SFR) 
+            StellarMass_complete=numpy.append(StellarMass_complete,StellarMass)
+            FOFDMmass_complete=numpy.append(FOFDMmass_complete,FOFDMmass)
+            GasMetallicity_complete=numpy.append(GasMetallicity_complete,GasMetallicity)
+            FOFStarFormingGasMass_complete=numpy.append(FOFStarFormingGasMass_complete,FOFStarFormingGasMass)
+            FOFStarFormingMetalFreeGasMass_complete=numpy.append(FOFStarFormingMetalFreeGasMass_complete,FOFStarFormingMetalFreeGasMass)
+            FOFStarFormingGasMetallicity_complete=numpy.append(FOFStarFormingGasMetallicity_complete,FOFStarFormingGasMetallicity)
+
+            FOFNumberOfMajorNeighbors_complete=numpy.append(FOFNumberOfMajorNeighbors_complete,FOFNumberOfMajorNeighbors)
+            FOFDrawnSeedMass_complete=numpy.append(FOFDrawnSeedMass_complete,FOFDrawnSeedMass)            
+        except IndexError:
+            N_empty+=1
+            aaa=1
+    return scale_fac_complete,BH_id_complete,StellarMass_complete,StellarMetallicity_complete,SFR_complete,FOFDMmass_complete,GasMetallicity_complete,file_id_complete,FOFStarFormingGasMass_complete,FOFStarFormingGasMetallicity_complete,FOFStarFormingMetalFreeGasMass_complete,N_empty,FOFNumberOfMajorNeighbors_complete,FOFDrawnSeedMass_complete
 
 
 
@@ -1159,7 +1331,9 @@ def get_merger_events_debug(output_path,get_primary_secondary_indices=0,HDF5=0,S
         BH_id1_complete=hf.get('BH_ID1')[:]
         BH_mass1_complete=hf.get('BH_Mass1')[:]
         BH_id2_complete=hf.get('BH_ID2')[:]
-        BH_mass2_complete=hf.get('BH_Mass2')[:]
+        BH_mass2_complete=hf.get('BH_Mass1')[:]
+        BH_Hsml1_complete=hf.get('BH_Hsml1')[:]
+        BH_Hsml2_complete=hf.get('BH_Hsml2')[:]
 
         
         hf.close()
@@ -2051,7 +2225,7 @@ def mean_plot(x,y,xscl,yscl,nbins,manual_bins=False,M_BINS=numpy.arange(0,200)):
     #mean= savitzky_golay(mean, 11, 3)
     #print (_[1:] + _[:-1])/2
     #print mean
-    mask=(std/mean)*100<100.
+    mask=(std/mean)*100<100000.
     
     x=((_[1:] + _[:-1])/2)[mask]
     y=mean[mask]
@@ -2071,6 +2245,19 @@ def median_plot(x,y,xscl,yscl,nbins):
     y_space_med=[numpy.median(y[(x>x_space[i])&(x<x_space[i+1])]) for i in range(0,len(x_space)-1)]
     x_space_med=[(x_space[i]+x_space[i+1])/2 for i in range(0,len(x_space)-1)]
     return x_space_med,y_space_med
+
+
+def mean_plot2(x,y,xscl,yscl,min_x, max_x,nbins):
+    #nbins = 5
+    if(yscl==True):
+        y=log10(y)
+    if(xscl==True):
+        x=log10(x)
+    x_space=numpy.linspace(min_x,max_x,nbins)
+    y_space_med=numpy.array([numpy.mean(y[(x>x_space[i])&(x<x_space[i+1])]) for i in range(0,len(x_space)-1)])
+    y_space_std=numpy.array([numpy.std(y[(x>x_space[i])&(x<x_space[i+1])]) for i in range(0,len(x_space)-1)])
+    x_space_med=numpy.array([(x_space[i]+x_space[i+1])/2 for i in range(0,len(x_space)-1)])
+    return x_space_med,y_space_med,y_space_std
 
 def get_median_with_IQR(x,y,xscl,yscl,minx,maxx,nbins,percentile):
     if(yscl==True):
@@ -2171,7 +2358,9 @@ def get_halo_density_profile(output_path,p_type,desired_redshift_of_selected_hal
         mass_distribution.append(mass_inside_bin)
 
     mass_distribution=numpy.array(mass_distribution)
-    mass_density=mass_distribution/4./3.14/(10**bin_centers)**3/((numpy.diff(bin_centers))[0])/numpy.log(10)
+    mass_volumes=4./3*3.14*numpy.diff((10**bin_edges)**3)
+    mass_density=mass_distribution/mass_volumes
+    #/4./3.14/(10**bin_centers)**2/((numpy.diff(bin_centers))[0])/numpy.log(10)
     return bin_centers,mass_distribution,mass_density
 
 
@@ -2245,7 +2434,7 @@ def get_general_profile(output_path,desired_property,p_type,desired_redshift_of_
         mass_distribution.append(mass_inside_bin)
 
     mass_distribution=numpy.array(mass_distribution)
-    return bin_centers,mass_distribution
+    return bin_centers,bin_edges,mass_distribution
 
 
                 
@@ -2458,58 +2647,66 @@ def trace_a_halo(basePath,halo_index_to_be_traced,initial_redshift,final_redshif
 
 
 def convert_merger_events_to_hdf5(basePath, dont_save_in_basePath=0, save_output_path='.'):
-    output_file_names=os.listdir(basePath+'/blackhole_mergers/')
-    snapshot_space=[]
-    redshift_space=[]
+    output_file_names = os.listdir(basePath + 'blackhole_mergers/')
+    snapshot_space = []
+    redshift_space = []
 
-    file_id_complete=numpy.array([],dtype=int)
-    scale_fac_complete=numpy.array([])
+    file_id_complete = numpy.array([], dtype=int)
+    scale_fac_complete = numpy.array([])
 
-    BH_id1_complete=numpy.array([],dtype=int)
-    BH_mass1_complete=numpy.array([])
-    BH_id2_complete=numpy.array([],dtype=int)
-    BH_mass2_complete=numpy.array([])
-
-    N_empty=0
+    BH_id1_complete = numpy.array([], dtype=int)
+    BH_mass1_complete = numpy.array([])
+    BH_id2_complete = numpy.array([], dtype=int)
+    BH_mass2_complete = numpy.array([])
+    BH_Hsml1_complete = numpy.array([])
+    BH_Hsml2_complete = numpy.array([])
 
     for name in output_file_names[:]:
-        #print(name)
-        data=numpy.loadtxt(basePath+'/blackhole_mergers/'+name)
-        try:
-            if (data.shape==(8,)):
-                file_id=numpy.array([data[0].astype(int)])
-                scale_fac=numpy.array([data[1]])
-                BH_id1=numpy.array([data[2].astype(int)])
-                BH_mass1=numpy.array([data[3]])
-                BH_id2=numpy.array([data[4].astype(int)])
-                BH_mass2=numpy.array([data[5]])                             
-            else:    
-                file_id=data[:,0].astype(int)
-                scale_fac=data[:,1]
-                BH_id1=data[:,2].astype(int)
-                BH_mass1=data[:,3]
-                BH_id2=data[:,4].astype(int)
-                BH_mass2=data[:,5]
+        data = numpy.loadtxt(basePath + 'blackhole_mergers/' + name)
 
-            file_id_complete=numpy.append(file_id_complete,file_id)
-            scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
-            BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
-            BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
-            BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
-            BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2) 
-        except IndexError:
-            N_empty+=1
-            aaa=1
+        try:
+            if data.shape == (8,):
+                file_id = numpy.array([data[0].astype(int)])
+                scale_fac = numpy.array([data[1]])
+                BH_id1 = numpy.array([data[2].astype(int)])
+                BH_mass1 = numpy.array([data[3]])
+                BH_id2 = numpy.array([data[4].astype(int)])
+                BH_mass2 = numpy.array([data[5]])
+                BH_Hsml1 = numpy.array([data[6]])
+                BH_Hsml2 = numpy.array([data[7]])
+            else:
+                file_id = data[:, 0].astype(int)
+                scale_fac = data[:, 1]
+                BH_id1 = data[:, 2].astype(int)
+                BH_mass1 = data[:, 3]
+                BH_id2 = data[:, 4].astype(int)
+                BH_mass2 = data[:, 5]
+                BH_Hsml1 = data[:, 6]
+                BH_Hsml2 = data[:, 7]
+
+            file_id_complete = numpy.append(file_id_complete, file_id)
+            scale_fac_complete = numpy.append(scale_fac_complete, scale_fac)
+            BH_id1_complete = numpy.append(BH_id1_complete, BH_id1)
+            BH_mass1_complete = numpy.append(BH_mass1_complete, BH_mass1)
+            BH_id2_complete = numpy.append(BH_id2_complete, BH_id2)
+            BH_mass2_complete = numpy.append(BH_mass2_complete, BH_mass2)
+            BH_Hsml1_complete = numpy.append(BH_Hsml1_complete, BH_Hsml1)
+            BH_Hsml2_complete = numpy.append(BH_Hsml2_complete, BH_Hsml2)
+        except Exception as e:
+            print(f"Error processing file {name}: {e}")
+
     if dont_save_in_basePath:
-        hf = h5py.File(save_output_path+'/blackhole_mergers.hdf5','w')
-    else: 
-        hf = h5py.File(basePath+'/blackhole_mergers.hdf5','w')
-    hf.create_dataset('FileID',data=file_id_complete)
-    hf.create_dataset('ScaleFactor',data=scale_fac_complete)
-    hf.create_dataset('BH_ID1',data=BH_id1_complete)
-    hf.create_dataset('BH_Mass1',data=BH_mass1_complete)
-    hf.create_dataset('BH_ID2',data=BH_id2_complete)
-    hf.create_dataset('BH_Mass2',data=BH_mass2_complete)
+        hf = h5py.File(save_output_path + '/blackhole_mergers.hdf5', 'w')
+    else:
+        hf = h5py.File(basePath + '/blackhole_mergers.hdf5', 'w')
+    hf.create_dataset('FileID', data=file_id_complete)
+    hf.create_dataset('ScaleFactor', data=scale_fac_complete)
+    hf.create_dataset('BH_ID1', data=BH_id1_complete)
+    hf.create_dataset('BH_Mass1', data=BH_mass1_complete)
+    hf.create_dataset('BH_ID2', data=BH_id2_complete)
+    hf.create_dataset('BH_Mass2', data=BH_mass2_complete)
+    hf.create_dataset('BH_Hsml1', data=BH_Hsml1_complete)
+    hf.create_dataset('BH_Hsml2', data=BH_Hsml2_complete)
     hf.close()
     
     

@@ -191,7 +191,7 @@ def construct_grid(final_positions,final_property,number_of_pixels,field='.',PAR
 
     proj_property=[]
     pixel_volume=1.
-    if (field=='Density'):
+    if (field=='Density') | (field=='SFR'):
         pixel_volume=pixelsize_lineofsight*pixelsize_planeofsky1*pixelsize_planeofsky2
  
     First,Second=numpy.meshgrid(planeofsky1_grid,planeofsky2_grid)
@@ -216,7 +216,7 @@ def construct_grid(final_positions,final_property,number_of_pixels,field='.',PAR
                 mask1=(planeofsky_pos1>(pixel_position1-pixelsize_planeofsky1/2.0))&(planeofsky_pos1<(pixel_position1+pixelsize_planeofsky1/2.))
 
                 mask=(mask1) & (mask2)
-                if (field=='Density'):
+                if (field=='Density') | (field=='SFR'):
                     proj_property.append(numpy.sum(final_property[mask])/pixel_volume)
                 else:
                     proj_property.append(numpy.average(final_property[mask]))
@@ -289,7 +289,7 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(final_property),vmax=Proj_property.max()),cmap='viridis')
         fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         cbar=fig.colorbar(fig_object,ax=ax)
-        cbar.set_label('SFR ($M_{\odot}/\mathrm{yr}^{-1}$)',fontsize=15)
+        cbar.set_label('SFR density \n ($M_{\odot}/\mathrm{yr}^{-1}/\mathrm{kpc}^{-3}$)',fontsize=15)
     if (field=='SFR'):
         print('making SFR')
         
@@ -297,7 +297,7 @@ def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filte
         fig_object=ax.pcolor(First,Second,Proj_property,norm=mpl.colors.LogNorm(vmin=valuemin,vmax=valuemax),cmap=colormap,alpha=alph)
         if (show_colorbar):
             cbar=fig.colorbar(fig_object,ax=ax,orientation=cbar_orient)
-            cbar.set_label('SFR ($M_{\odot}/\mathrm{yr}^{-1}$)',fontsize=30)
+            cbar.set_label('SFR density \n ($M_{\odot} \ \mathrm{yr}^{-1} \ \mathrm{kpc}^{-3}$)',fontsize=30)
             cbar.ax.tick_params(labelsize=30)    
    
     
