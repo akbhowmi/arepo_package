@@ -72,8 +72,20 @@ def extract_slice(basePath,p_type,desired_center,desired_redshift,field,planeofs
         HighResGasMass,output_redshift=arepo_package.get_particle_property(basePath,'HighResGasMass',p_type,desired_redshift,list_all=False)    
         masses,output_redshift=arepo_package.get_particle_property(basePath,'Masses',p_type,desired_redshift,list_all=False)
         HighResGasFraction=HighResGasMass/masses
-    if (field=='Density'):
+    
+    if (field=='Masses'):
         Masses,output_redshift=arepo_package.get_particle_property(basePath,'Masses',p_type,desired_redshift,list_all=False)
+        Masses*=1e10 
+        particle_property=Masses
+        
+    if (field=='Density'):
+                    
+        if(p_type==1):
+            Potential,output_redshift=arepo_package.get_particle_property(basePath,'Potential',p_type,desired_redshift,list_all=False)
+
+            Masses=numpy.array([arepo_package.load_snapshot_header(basePath,desired_redshift)['MassTable'][1]]*len(Potential))
+        else:
+            Masses,output_redshift=arepo_package.get_particle_property(basePath,'Masses',p_type,desired_redshift,list_all=False)
         Masses*=1e10 
         particle_property=Masses
         
@@ -218,6 +230,8 @@ def construct_grid(final_positions,final_property,number_of_pixels,field='.',PAR
                 mask=(mask1) & (mask2)
                 if (field=='Density') | (field=='SFR'):
                     proj_property.append(numpy.sum(final_property[mask])/pixel_volume)
+                elif(field=='Masses'): 
+                    proj_property.append(numpy.sum(final_property[mask]))
                 else:
                     proj_property.append(numpy.average(final_property[mask]))
 
@@ -227,19 +241,77 @@ def construct_grid(final_positions,final_property,number_of_pixels,field='.',PAR
     
     proj_property=numpy.asarray(proj_property)
     print(proj_property)
-    if (field=='Metallicit'):
-        proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=min(proj_property[proj_property>0])
-    else:
-        proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19
-    print(proj_property)
+    #if (field=='Metallicit'):
+    #    proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=min(proj_property[proj_property>0])
+    #else:
+    #    proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19
+    #print(proj_property)
     Proj_property=proj_property.reshape(number_of_pixels,number_of_pixels)
 
    # proj_property[(numpy.isnan(proj_property)) | (proj_property==0)]=1e-19 
     return First,Second,Proj_property
 
-def visualize(First,Second,proj_property,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,colormap='Greys_r',valuemin=0.1,valuemax=1e6,alph=1,show_labels=1,show_ticks=1,cbar_orient='horizontal'):
+def filter_property(First,Second,proj_property,field,apply_filter=1,sigma_filter=1,show_colorbar=1,colormap='Greys_r',valuemin=0.1,valuemax=1e6,alph=1,show_labels=1,show_ticks=1,cbar_orient='horizontal',variable_filter=0,neighborhood_size=100,characteristic_mass=1,pixel_size=1,variable_filter_property='',sigma_fac=5,no_periodic=0):
+    def compute_local_sigma(arr, i, j,characteristic_mass=characteristic_mass):
+        density = arr[i, j]
+        size_of_cell=pow(characteristic_mass/density,1./3)
+        size_of_cell_pixels=size_of_cell/pixel_size
+        return size_of_cell_pixels
     if (apply_filter):
-        Proj_property=gaussian_filter(proj_property,sigma=sigma_filter)
+        if(variable_filter==0):
+            Proj_property=gaussian_filter(proj_property,sigma=sigma_filter)
+        else:
+
+
+
+            # Create an array to store the filtered values
+            filtered_property = numpy.zeros_like(proj_property)
+            size_of_cell=pow(characteristic_mass/variable_filter_property,1./3) * 3./4./3.14 
+            local_sigma_all_un=sigma_fac*size_of_cell/pixel_size
+            local_sigma_all = gaussian_filter(local_sigma_all_un, sigma=0.3)
+            # Iterate through each point in proj_property
+            for i in range(proj_property.shape[0]):
+                if(i%100==0):
+                    print(i)
+                for j in range(proj_property.shape[1]):
+                    #if(j%1==0):
+                        #print(j)
+                    # Compute the local sigma based on the local density
+                    local_sigma = local_sigma_all[i,j]
+                    if(local_sigma>10):
+                        local_sigma=10
+                    if(local_sigma==0):
+                        local_sigma=0.5
+                    # Create a neighborhood around the current point
+                    neighborhood = numpy.roll(proj_property,
+                               (neighborhood_size//2 - i, neighborhood_size//2 - j), 
+                               axis=(0, 1))[0:neighborhood_size, 0:neighborhood_size]
+                    
+                    if(no_periodic):
+                        start_row = max(0, i - neighborhood_size // 2)
+                        end_row = min(proj_property.shape[0], i + neighborhood_size // 2 + 1)
+                        start_col = max(0, j - neighborhood_size // 2)
+                        end_col = min(proj_property.shape[1], j + neighborhood_size // 2 + 1)
+
+                        # Extract the non-periodic neighborhood
+                        neighborhood = proj_property[start_row:end_row, start_col:end_col]
+                    
+                    
+
+
+
+                    # Apply Gaussian filter with the computed sigma
+                    filtered_value = gaussian_filter(neighborhood, sigma=local_sigma)
+
+                    # Take the average of the filtered neighborhood
+                    filtered_property[i, j] = filtered_value[neighborhood_size//2, neighborhood_size//2]
+            Proj_property=filtered_property
+    else:
+         Proj_property=proj_property
+    return First,Second,Proj_property
+            
+            
+def visualize(First,Second,Proj_property,field,fig,ax,apply_filter=1,sigma_filter=1,show_colorbar=1,colormap='Greys_r',valuemin=0.1,valuemax=1e6,alph=1,show_labels=1,show_ticks=1,cbar_orient='horizontal',variable_filter=0,neighborhood_size=100,characteristic_mass=1,pixel_size=1):            
     if (field=='Density'):
         print("making density")
         #fig_object=ax.pcolor(First,Second,Proj_property,norm=colors.LogNorm(vmin=min(proj_property[proj_property>0]),vmax=Proj_property.max()),cmap=colormap)

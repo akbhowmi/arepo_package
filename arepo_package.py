@@ -658,9 +658,9 @@ def get_dark_matter_correlation_function_zoom(output_path,input_redshift,NBINS, 
 
 
 
-def get_group_lengths_offsets(output_path,p_type,desired_redshift,maximum_index):
+def get_group_lengths_offsets(output_path,p_type,desired_redshift,maximum_index,file_format='fof_subfind'):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
-    group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False))
+    group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,file_format = file_format,list_all=False))
     group_lengths=group_lengths[:,p_type] 
     group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,maximum_index+1)])
     return group_lengths[0:maximum_index+1],group_offsets,output_redshift
@@ -2814,7 +2814,7 @@ def convert_merger_hosts_to_hdf5(basePath):
     hf.close()
     
     
-def convert_details_to_hdf5(basePath):
+def convert_details_to_hdf5(basePath,DFD=0,KIN=0):
     def parse_id_col(BH_ids_as_string):
         return numpy.int(BH_ids_as_string[3:])
     vec_parse_id_col=numpy.vectorize(parse_id_col)
@@ -2825,6 +2825,17 @@ def convert_details_to_hdf5(basePath):
     BH_mdots_for_id=numpy.array([])
     rhos_for_id=numpy.array([])
     sound_speeds_for_id=numpy.array([])
+    if(KIN):
+        xpos_for_id = numpy.array([])
+        ypos_for_id = numpy.array([])
+        zpos_for_id = numpy.array([])
+        xvel_for_id = numpy.array([])
+        yvel_for_id = numpy.array([])
+        zvel_for_id = numpy.array([])
+        if(DFD):
+           xacc_for_id = numpy.array([])
+           yacc_for_id = numpy.array([])
+           zacc_for_id = numpy.array([])
     ii=0
     for output_file_name in output_file_names[:]:
         if ('blackhole_details' in output_file_name):
@@ -2832,15 +2843,24 @@ def convert_details_to_hdf5(basePath):
             ii+=1
             try:
                 full_data=numpy.loadtxt(basePath+'blackhole_details/'+output_file_name,dtype='str')
-           
-                
                 BH_ids=vec_parse_id_col(full_data[:,0])
                 scale_factors=(full_data[:,1]).astype('float')
                 BH_masses=(full_data[:,2]).astype('float')
                 BH_mdots=(full_data[:,3]).astype('float')
                 rhos=(full_data[:,4]).astype('float')
                 sound_speeds=(full_data[:,5]).astype('float')
+                if(KIN):
+                    xpos=(full_data[:,6]).astype('float')
+                    ypos=(full_data[:,7]).astype('float')
+                    zpos=(full_data[:,8]).astype('float')
 
+                    xvel=(full_data[:,9]).astype('float')
+                    yvel=(full_data[:,10]).astype('float')
+                    zvel=(full_data[:,11]).astype('float')
+                    if(DFD):
+                        xacc=(full_data[:,12]).astype('float')
+                        yacc=(full_data[:,13]).astype('float')
+                        zacc=(full_data[:,14]).astype('float')
 
                 BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids)
                 scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors)
@@ -2848,6 +2868,17 @@ def convert_details_to_hdf5(basePath):
                 BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots)
                 rhos_for_id=numpy.append(rhos_for_id,rhos)
                 sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds)
+                if(KIN):
+                    xpos_for_id = numpy.append(xpos_for_id,xpos)
+                    ypos_for_id = numpy.append(ypos_for_id, ypos)
+                    zpos_for_id = numpy.append(zpos_for_id, zpos)
+                    xvel_for_id = numpy.append(xvel_for_id, xvel)
+                    yvel_for_id = numpy.append(yvel_for_id, yvel)
+                    zvel_for_id = numpy.append(zvel_for_id, zvel)
+                    if(DFD):
+                        xacc_for_id = numpy.append(xacc_for_id, xacc)
+                        yacc_for_id = numpy.append(yacc_for_id, yacc)
+                        zacc_for_id = numpy.append(zacc_for_id, zacc)
             except ValueError:
                 aa=1            
     
@@ -2859,10 +2890,21 @@ def convert_details_to_hdf5(basePath):
     hf.create_dataset('BH_Mdot',data=BH_mdots_for_id)
     hf.create_dataset('Rho',data=rhos_for_id)
     hf.create_dataset('cs',data=sound_speeds_for_id)
+    if(KIN):
+       hf.create_dataset('xpos',data=xpos_for_id)
+       hf.create_dataset('ypos',data=ypos_for_id)
+       hf.create_dataset('zpos', data=zpos_for_id)
+       hf.create_dataset('xvel', data=xvel_for_id)
+       hf.create_dataset('yvel', data=yvel_for_id)
+       hf.create_dataset('zvel', data=zvel_for_id)
+       if(DFD):
+           hf.create_dataset('xacc', data=xacc_for_id)
+           hf.create_dataset('yacc', data=yacc_for_id)
+           hf.create_dataset('zacc', data=zacc_for_id)
     hf.close()
     
 
-def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift): 
+def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift,redshift_step): 
     global N_mergers
     global indices_of_included_events
     N_mergers=0
@@ -2876,7 +2918,7 @@ def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift):
             self.LastMergedAtRedshift=-1 
     #-----------------------------------------------------------------------------------------------------------------------
     #----------------------------------This function fills up the progenitor tree------------------------------------------               
-    def function_fill_progenitor_tree(blackhole_ID,currentblackhole,minimum_redshift):
+    def function_fill_progenitor_tree(blackhole_ID,currentblackhole,minimum_redshift,redshift_step):
         global N_mergers
         
         currentblackhole.BHID=blackhole_ID
@@ -2925,8 +2967,8 @@ def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift):
         currentblackhole.PrimaryProgenitor=Blackhole()
         currentblackhole.SecondaryProgenitor=Blackhole()
 
-        function_fill_progenitor_tree(primary_progenitor_ID,currentblackhole.PrimaryProgenitor,next_minimum_redshift)
-        function_fill_progenitor_tree(secondary_progenitor_ID,currentblackhole.SecondaryProgenitor,next_minimum_redshift)    
+        function_fill_progenitor_tree(primary_progenitor_ID,currentblackhole.PrimaryProgenitor,next_minimum_redshift,redshift_step)
+        function_fill_progenitor_tree(secondary_progenitor_ID,currentblackhole.SecondaryProgenitor,next_minimum_redshift,redshift_step)    
 
 
     p_type=5
@@ -2934,7 +2976,10 @@ def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift):
     BH_Mass,output_redshift=get_particle_property(basePath,'BH_Mass',p_type,desired_redshift)
     blackhole_ID=ParticleIDs[blackhole_index]   
     #merging_time,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty=arepo_package.get_merger_events(basePath,HDF5=1,SORT_PRIMARY_SECONDARY=1)
-    merging_time,primary_id,primary_mass,hosthalomass_primary,hosthalostellarmass_primary,hosthalogasmass_primary,hosthalodmmass_primary,secondary_id,secondary_mass,hosthalomass_secondary,hosthalostellarmass_secondary,hosthalogasmass_secondary,hosthalodmmass_secondary,file_id_complete=get_merger_events_hosts(basePath,HDF5=1,SORT_PRIMARY_SECONDARY=0)
+    #merging_time,primary_id,primary_mass,hosthalomass_primary,hosthalostellarmass_primary,hosthalogasmass_primary,hosthalodmmass_primary,secondary_id,secondary_mass,hosthalomass_secondary,hosthalostellarmass_secondary,hosthalogasmass_secondary,hosthalodmmass_secondary,file_id_complete=get_merger_events_hosts(basePath,HDF5=1,SORT_PRIMARY_SECONDARY=0)
+    
+    
+    merging_time,primary_mass,secondary_mass,primary_id,secondary_id,BH_Mdot1,BH_Mdot2,hosthalomass_primary,hosthalomass_secondary,hosthalostellarmass_primary,hosthalostellarmass_secondary,hosthalogasmass_primary,hosthalogasmass_secondary,BH_HostSFR1,BH_HostSFR2,file_id_complete,NNN=get_merger_events_from_snapshot(basePath,desired_redshift,HOSTS=1)
     #merging_time,secondary_id,secondary_mass,hosthalomass_primary,hosthalostellarmass_primary,hosthalogasmass_primary,hosthalodmmass_primary,primary_id,primary_mass,hosthalomass_secondary,hosthalostellarmass_secondary,hosthalogasmass_secondary,hosthalodmmass_secondary,file_id_complete=arepo_package.get_merger_events_hosts(basePath,HDF5=1)
 
    
@@ -2943,10 +2988,11 @@ def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift):
     #print(merging_redshifts)
 
 
+
     sys.setrecursionlimit(1000000)
         
     rootblackhole = Blackhole()
-    function_fill_progenitor_tree(blackhole_ID,rootblackhole,output_redshift-1e-2)
+    function_fill_progenitor_tree(blackhole_ID,rootblackhole,output_redshift-redshift_step,redshift_step)
     return rootblackhole,N_mergers,indices_of_included_events
 
 

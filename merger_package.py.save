@@ -1,0 +1,80 @@
+def get_merger_distributions(basePath,nbins,min_value,max_value,mass_cut,linear=0,HDF5=0,path_to_hdf5='./'):
+    if(HDF5):
+        fobj=h5py.File(path_to_hdf5)
+        scale_fac_complete_sorted=fobj.get('time')[:]
+        primary_mass_sorted=fobj.get('mass_out')[:]
+        secondary_mass_sorted=fobj.get('mass_in')[:]
+    else:
+        scale_fac_complete_sorted,primary_mass_sorted,secondary_mass_sorted,primary_id_sorted,secondary_id_sorted,file_id_complete_sorted,N_empty=arepo_package.get_merger_events_from_snapshot(basePath,upto_redshift,HOSTS=0)
+    mass_ratio=secondary_mass_sorted/primary_mass_sorted
+    #print(mass_ratio[mass_ratio>1.])
+        #print(primary_mass_sorted,secondary_mass_sorted)
+    merger_redshifts=1./scale_fac_complete_sorted-1.
+    #print(merger_redshifts)
+    
+    #print(merger_redshifts)
+    
+    #print("###",primary_mass_sorted)
+    mask_primary=primary_mass_sorted>=mass_cut/1e10
+    mask_secondary=secondary_mass_sorted>=mass_cut/1e10
+    mask_total_mass=(primary_mass_sorted+secondary_mass_sorted)>total_mass_cut/1e10
+    mask_redshift=merger_redshifts>=redshift_cut
+    mask_ratio_cut=mass_ratio>=mass_ratio_cut
+    mask=((mask_primary&mask_secondary)&(mask_redshift&mask_ratio_cut))&mask_total_mass
+    merger_redshifts=merger_redshifts[mask]
+  
+   # print("!!!",merger_redshifts)
+    bins, dist, dist_err,norm,counts_sum=arepo_package.get_probability_density(merger_redshifts,nbins,min_value,max_value,linear=linear)
+   # print(dist)
+    dist*=counts_sum
+
+    dist_err*=counts_sum
+    dt=numpy.array([T(zz-norm/2,zz+norm/2) for zz in bins])
+    
+
+    dz=numpy.diff(bins)[0]
+    #print("!!!",dist)    
+    dz_dt=numpy.array([dz/T(zz-dz/2,zz+dz/2) for zz in bins])
+    
+    return bins,dist,dist_err,norm,dz_dt
+
+
+
+def get_merger_distributions_hosts(basePath,nbins,min_value,max_value,mass_cut,linear=0,HDF5=0,path_to_hdf5='./'):
+    if(HDF5):
+        fobj=h5py.File(path_to_hdf5)
+        scale_fac_complete_sorted=fobj.get('time')[:]
+        primary_mass_sorted=fobj.get('mass_out')[:]
+        secondary_mass_sorted=fobj.get('mass_in')[:]
+    else:
+        scale_fac_complete,BH_id_primary,BH_mass_primary,hosthalomass_primary,hosthalostellarmass_primary,hosthalogasmass_primary,hosthalodmmass_primary,BH_id_secondary,BH_mass_secondary,hosthalomass_secondary,hosthalostellarmass_secondary,hosthalogasmass_secondary,hosthalodmmass_secondary,file_id_complete=arepo_package.get_merger_events_hosts(basePath)        #print(primary_mass_sorted,secondary_mass_sorted)
+    merger_redshifts=1./scale_fac_complete-1.
+    mask_primary=BH_mass_primary>=mass_cut/1e10
+    mask_secondary=BH_mass_secondary>=mass_cut/1e10
+    mask=mask_primary&mask_secondary
+    
+    maskhost1=hosthalomass_primary+hosthalomass_secondary>14.2e10/1e10*h
+    maskhost2=hosthalomass_primary>7.1e10/1e10*h
+    maskhost3=hosthalodmmass_primary>2e9/1e10*h
+    maskhost4=hosthalodmmass_secondary>2e9/1e10*h
+    maskhost5=hosthalostellarmass_primary>1e8/1e10*h   
+    maskhost6=hosthalostellarmass_secondary>1e8/1e10*h
+    
+    if(apply_host_cuts==0):
+        maskhost=mask
+    else:
+        maskhost=((((maskhost1&maskhost2)&maskhost3)&maskhost4)&maskhost5)&maskhost6
+    
+    
+    merger_redshifts=merger_redshifts[mask&maskhost]
+    
+    bins, dist, dist_err,norm,counts_sum=arepo_package.get_probability_density(merger_redshifts,nbins,min_value,max_value,linear=linear)
+    
+    dt=numpy.array([T(zz-norm/2,zz+norm/2) for zz in bins])
+    
+    
+    dz=numpy.diff(bins)[0]
+    
+    dz_dt=numpy.array([dz/T(zz-dz/2,zz+dz/2) for zz in bins])
+    
+    return bins,dist,dist_err,norm,dz_dt
