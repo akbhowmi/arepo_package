@@ -15,6 +15,15 @@ import scipy
 import matplotlib as mpl
 import h5py
 
+
+
+def get_redshift_from_snapshot(output_path,snap):
+    snapshot_space,redshift_space=get_snapshot_redshift_correspondence(output_path)
+    diff = abs(snapshot_space-snap)
+    return (redshift_space[diff==min(diff)])[0]
+    
+    
+
 def get_snapshot_redshift_correspondence(output_path,file_format='fof_subfind'):
     output_file_names=os.listdir(output_path)
 #    print(output_foutput_test_0.32_1.83_new_no_ex_new9_bFOF3_env_seed5.00le_names)
@@ -172,10 +181,14 @@ def make_cuts(quantities,cut): #selects an array of quantities (argument 1) and 
     cutted_quantities=[quantity[cut] for quantity in quantities]
     return cutted_quantities
 
-def get_group_property(output_path,group_property,desired_redshift,list_all=True,file_format='fof_subfind',stack_style='hstack'):
+def get_group_property(output_path,group_property,desired_redshift,list_all=True,file_format='fof_subfind',stack_style='hstack',postprocessed = 0):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False,file_format=file_format)
     if (file_format=='fof_subfind'):
-        property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
+        if(postprocessed == 1):
+            property = il.groupcat.loadHalos_postprocessed(output_path,output_snapshot,fields=group_property)
+        else:
+            property = il.groupcat.loadHalos(output_path,output_snapshot,fields=group_property)
+            
     elif (file_format=='fof_sub_subfind'):
         property = il.groupcat.loadHalos2(output_path,output_snapshot,fields=group_property)
     elif (file_format=='fof'):
@@ -240,10 +253,13 @@ def get_group_property(output_path,group_property,desired_redshift,list_all=True
 '''
 
 
-def get_subhalo_property(output_path,subhalo_property,desired_redshift,list_all=True,file_format='fof_subfind'):
+def get_subhalo_property(output_path,subhalo_property,desired_redshift,list_all=True,file_format='fof_subfind',postprocessed=0):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)  
     if (file_format=='fof_subfind'):
-        property = il.groupcat.loadSubhalos(output_path,output_snapshot,fields=subhalo_property)
+        if(postprocessed==1):
+            property = il.groupcat.loadSubhalos_postprocessed(output_path,output_snapshot,fields=subhalo_property)
+        else:
+            property = il.groupcat.loadSubhalos(output_path,output_snapshot,fields=subhalo_property)
     elif(file_format=='fof_sub_subfind'):
         property = il.groupcat.loadSubhalos2(output_path,output_snapshot,fields=subhalo_property)
         
@@ -666,9 +682,76 @@ def get_group_lengths_offsets(output_path,p_type,desired_redshift,maximum_index,
     return group_lengths[0:maximum_index+1],group_offsets,output_redshift
 
 
+def get_particle_property_within_postprocessed_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True,store_all_offsets=1, public_simulation=0,file_format='fof_subfind'):
+    output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False,file_format=file_format)
+    if (public_simulation==0):
+        requested_property=il.snapshot.loadSubset_groupordered(output_path,output_snapshot,p_type,fields=particle_property)
+
+    if (group_type=='groups'):
+        if(public_simulation==0):              
+            group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,list_all=False,file_format=file_format,stack_style='vstack',postprocessed=1))
+            group_lengths=group_lengths[:,p_type] 
+            if (store_all_offsets==0):
+                    group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
+            else:
+                if (os.path.exists(output_path+'/offsets_%d_snap%d_postprocessed.npy'%(p_type,output_snapshot))):
+                    group_offsets=numpy.load(output_path+'/offsets_%d_snap%d_postprocessed.npy'%(p_type,output_snapshot),allow_pickle = True)
+                    print("offsets were already there")
+                else:
+                    group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
+                    numpy.save(output_path+'/offsets_%d_snap%d_postprocessed.npy'%(p_type,output_snapshot),group_offsets)
+                    print("Storing the offsets")
+            group_particles=requested_property[group_offsets[subhalo_index]:group_offsets[subhalo_index]+group_lengths[subhalo_index]]
+        else:
+            group_particles=il.snapshot.loadHalo(output_path, output_snapshot, subhalo_index, p_type, fields=particle_property)
+        return group_particles,output_redshift
+
+    elif (group_type=='subhalo'):              
+        if(public_simulation==0):
+            group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,postprocessed=1))
+            group_lengths=group_lengths[:,p_type] 
+            if (store_all_offsets==0):
+                    group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
+            else:
+                if (os.path.exists(output_path+'/offsets_%d_snap%d_postprocessed.npy'%(p_type,output_snapshot))):
+                    group_offsets=numpy.load(output_path+'/offsets_%d_snap%d_postprocessed.npy'%(p_type,output_snapshot),allow_pickle = True)
+                    print("offsets were already there")
+                else:
+                    group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
+                    numpy.save(output_path+'/offsets_%d_snap%d_postprocessed.npy'%(p_type,output_snapshot),group_offsets)
+                    print("Storing the offsets")        
+            subhalo_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift, postprocessed=1))
+            subhalo_lengths=subhalo_lengths[:,p_type] 
+            subhalo_indices=numpy.arange(0,len(subhalo_lengths))
+            subhalo_group_number,output_redshift=(get_subhalo_property(output_path,'SubhaloGrNr', desired_redshift,list_all=False,postprocessed=1));
+            desired_group_number=subhalo_group_number[subhalo_index]  
+            subhalo_lengths=subhalo_lengths[subhalo_group_number==desired_group_number]
+            subhalo_offsets=numpy.array([sum(subhalo_lengths[0:i]) for i in range(0,len(subhalo_lengths))])
+            mask=subhalo_group_number==desired_group_number
+            #print(len(mask)),mask
+            subhalo_indices=subhalo_indices[mask]  
+            subhalo_final_indices=numpy.arange(0,len(subhalo_indices))
+            group_particles=requested_property[group_offsets[desired_group_number]:group_offsets[desired_group_number]+group_lengths[desired_group_number]]   
+        
+            del requested_property
+
+            #subhalo_indices=subhalo_indices[subhalo_group_number==desired_group_number]
+            final_index=(subhalo_final_indices[subhalo_indices==subhalo_index])[0]
+        
+            subhalo_particles=group_particles[subhalo_offsets[final_index]:subhalo_offsets[final_index]+subhalo_lengths[final_index]]
+      
+            #return subhalo_particles,group_particles,output_redshift     
+        else:
+            subhalo_group_number,output_redshift=(get_subhalo_property(output_path,'SubhaloGrNr', desired_redshift,list_all=False,postprocessed=1));
+            desired_group_number=subhalo_group_number[subhalo_index]
+            group_particles=il.snapshot.loadHalo(output_path, output_snapshot, desired_group_number, p_type, fields=particle_property)
+            subhalo_particles=il.snapshot.loadSubhalo(output_path, output_snapshot, subhalo_index, p_type, fields=particle_property)
+        return subhalo_particles,group_particles,output_redshift
+    else:
+        print("Error:Unidentified group type")
 
 
-def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True,store_all_offsets=0, public_simulation=0,file_format='fof_subfind'):
+def get_particle_property_within_groups(output_path,particle_property,p_type,desired_redshift,subhalo_index,group_type='groups',list_all=True,store_all_offsets=1, public_simulation=0,file_format='fof_subfind'):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False,file_format=file_format)
     if (public_simulation==0):
         requested_property=il.snapshot.loadSubset(output_path,output_snapshot,p_type,fields=particle_property)
@@ -681,7 +764,7 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
                     group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
             else:
                 if (os.path.exists(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot))):
-                    group_offsets=numpy.load(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot))
+                    group_offsets=numpy.load(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot),allow_pickle = True)
                     print("offsets were already there")
                 else:
                     group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
@@ -696,8 +779,16 @@ def get_particle_property_within_groups(output_path,particle_property,p_type,des
         if(public_simulation==0):
             group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift))
             group_lengths=group_lengths[:,p_type] 
-            group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
-        
+            if (store_all_offsets==0):
+                    group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,subhalo_index+1)]) 
+            else:
+                if (os.path.exists(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot))):
+                    group_offsets=numpy.load(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot),allow_pickle = True)
+                    print("offsets were already there")
+                else:
+                    group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,len(group_lengths))])
+                    numpy.save(output_path+'/offsets_%d_snap%d.npy'%(p_type,output_snapshot),group_offsets)
+                    print("Storing the offsets")        
             subhalo_lengths,output_redshift=(get_subhalo_property(output_path,'SubhaloLenType', desired_redshift))
             subhalo_lengths=subhalo_lengths[:,p_type] 
             subhalo_indices=numpy.arange(0,len(subhalo_lengths))
@@ -1021,7 +1112,7 @@ def get_seeding_events2(output_path):
 
     for name in output_file_names[:]:
         try:
-            data=numpy.loadtxt(output_path+'blackhole_seeding2/'+name)
+            data=numpy.loadtxt(output_path+'blackhole_seeding2_backup/'+name)
         except:
             iii=1
         try:
@@ -1321,6 +1412,97 @@ def get_phantommerger_events(output_path,get_primary_secondary_indices=0,HDF5=0,
     else:
         return merger_type_complete,scale_fac_complete_sorted,BH_mass1_complete,BH_mass2_complete,BH_id1_complete,BH_id2_complete,file_id_complete_sorted,N_empty   
 
+def get_merger_events_kin(output_path,get_primary_secondary_indices=0,HDF5=0,SORT_PRIMARY_SECONDARY=0):
+    N_empty=0
+    if(HDF5):
+        print("Note: reading merger events from the post processed hdf5 files")
+        hf = h5py.File(output_path+'blackhole_mergers.hdf5')
+        file_id_complete=hf.get('FileID')[:]
+        scale_fac_complete=hf.get('ScaleFactor')[:]
+        BH_id1_complete=hf.get('BH_ID1')[:]
+        BH_mass1_complete=hf.get('BH_Mass1')[:]
+        BH_id2_complete=hf.get('BH_ID2')[:]
+        BH_mass2_complete=hf.get('BH_Mass1')[:]
+        BH_Hsml1_complete=hf.get('BH_Hsml1')[:]
+        BH_Hsml2_complete=hf.get('BH_Hsml2')[:]
+        K_Energy_complete=hf.get('K_Energy')[:]
+        P_Energy_complete=hf.get('P_Energy')[:]        
+        hf.close()
+    else:
+        output_file_names=os.listdir(output_path+'blackhole_mergers/')
+        snapshot_space=[]
+        redshift_space=[]
+
+        file_id_complete=numpy.array([],dtype=int)
+        scale_fac_complete=numpy.array([])
+
+        BH_id1_complete=numpy.array([],dtype=int)
+        BH_mass1_complete=numpy.array([])
+        BH_id2_complete=numpy.array([],dtype=int)
+        BH_mass2_complete=numpy.array([])
+        BH_Hsml1_complete=numpy.array([])
+        BH_Hsml2_complete=numpy.array([])
+        K_Energy_complete=numpy.array([])
+        P_Energy_complete=numpy.array([]) 
+
+        for name in output_file_names[:]:
+            #print(name)
+            data=numpy.loadtxt(output_path+'blackhole_mergers/'+name)
+
+            try:
+                if (data.shape==(10,)):
+                    file_id=numpy.array([data[0].astype(int)])
+                    scale_fac=numpy.array([data[1]])
+                    BH_id1=numpy.array([data[2].astype(int)])
+                    BH_mass1=numpy.array([data[3]])
+                    BH_id2=numpy.array([data[4].astype(int)])
+                    BH_mass2=numpy.array([data[5]])
+                    BH_Hsml1=numpy.array([data[6]])
+                    BH_Hsml2=numpy.array([data[7]])
+                    K_Energy=numpy.array([data[8]])
+                    P_Energy=numpy.array([data[9]])
+                    
+                else:    
+                    file_id=data[:,0].astype(int)
+                    scale_fac=data[:,1]
+                    BH_id1=data[:,2].astype(int)
+                    BH_mass1=data[:,3]
+                    BH_id2=data[:,4].astype(int)
+                    BH_mass2=data[:,5]
+                    BH_Hsml1=data[:,6]
+                    BH_Hsml2=data[:,7]
+                    K_Energy=data[:,8]
+                    P_Energy=data[:,9]
+
+                file_id_complete=numpy.append(file_id_complete,file_id)
+                scale_fac_complete=numpy.append(scale_fac_complete,scale_fac)
+                BH_id1_complete=numpy.append(BH_id1_complete,BH_id1)
+                BH_mass1_complete=numpy.append(BH_mass1_complete,BH_mass1)    
+                BH_id2_complete=numpy.append(BH_id2_complete,BH_id2)
+                BH_mass2_complete=numpy.append(BH_mass2_complete,BH_mass2) 
+                BH_Hsml1_complete=numpy.append(BH_Hsml1_complete,BH_Hsml1) 
+                BH_Hsml2_complete=numpy.append(BH_Hsml2_complete,BH_Hsml2) 
+                K_Energy_complete=numpy.append(K_Energy_complete,K_Energy) 
+                P_Energy_complete=numpy.append(P_Energy_complete,P_Energy) 
+            except IndexError:
+                N_empty+=1
+                aaa=1
+    mass_tuple=list(zip(BH_mass1_complete,BH_mass2_complete))
+    id_tuple=list(zip(BH_id1_complete,BH_id2_complete))
+
+    primary_index=numpy.array([numpy.argmax([dat[0],dat[1]]) for dat in mass_tuple])
+    secondary_index=numpy.array([numpy.argmin([dat[0],dat[1]]) for dat in mass_tuple])
+
+    primary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,primary_index))])
+    secondary_mass=numpy.array([mass_t[index] for (mass_t,index) in list(zip(mass_tuple,secondary_index))])
+
+    primary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,primary_index))])
+    secondary_id=numpy.array([id_t[index] for (id_t,index) in list(zip(id_tuple,secondary_index))])
+    
+    if SORT_PRIMARY_SECONDARY:
+        return scale_fac_complete,primary_mass,secondary_mass,primary_id,secondary_id,file_id_complete,N_empty
+    else:
+        return scale_fac_complete,BH_mass1_complete,BH_mass2_complete,BH_id1_complete,BH_id2_complete,file_id_complete,N_empty,BH_Hsml1_complete,BH_Hsml2_complete,K_Energy_complete,P_Energy_complete
 
 def get_merger_events_debug(output_path,get_primary_secondary_indices=0,HDF5=0,SORT_PRIMARY_SECONDARY=0):
     N_empty=0
@@ -2832,10 +3014,15 @@ def convert_details_to_hdf5(basePath,DFD=0,KIN=0):
         xvel_for_id = numpy.array([])
         yvel_for_id = numpy.array([])
         zvel_for_id = numpy.array([])
+
+        xacc_for_id = numpy.array([])
+        yacc_for_id = numpy.array([])
+        zacc_for_id = numpy.array([])
         if(DFD):
-           xacc_for_id = numpy.array([])
-           yacc_for_id = numpy.array([])
-           zacc_for_id = numpy.array([])
+            xDFDacc_for_id = numpy.array([])
+            yDFDacc_for_id = numpy.array([])
+            zDFDacc_for_id = numpy.array([])
+        
     ii=0
     for output_file_name in output_file_names[:]:
         if ('blackhole_details' in output_file_name):
@@ -2857,10 +3044,14 @@ def convert_details_to_hdf5(basePath,DFD=0,KIN=0):
                     xvel=(full_data[:,9]).astype('float')
                     yvel=(full_data[:,10]).astype('float')
                     zvel=(full_data[:,11]).astype('float')
+                    
+                    xacc=(full_data[:,12]).astype('float')
+                    yacc=(full_data[:,13]).astype('float')
+                    zacc=(full_data[:,14]).astype('float')
                     if(DFD):
-                        xacc=(full_data[:,12]).astype('float')
-                        yacc=(full_data[:,13]).astype('float')
-                        zacc=(full_data[:,14]).astype('float')
+                        xDFDacc=(full_data[:,15]).astype('float')
+                        yDFDacc=(full_data[:,16]).astype('float')
+                        zDFDacc=(full_data[:,17]).astype('float')
 
                 BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids)
                 scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors)
@@ -2875,10 +3066,13 @@ def convert_details_to_hdf5(basePath,DFD=0,KIN=0):
                     xvel_for_id = numpy.append(xvel_for_id, xvel)
                     yvel_for_id = numpy.append(yvel_for_id, yvel)
                     zvel_for_id = numpy.append(zvel_for_id, zvel)
+                    xacc_for_id = numpy.append(xacc_for_id, xacc)
+                    yacc_for_id = numpy.append(yacc_for_id, yacc)
+                    zacc_for_id = numpy.append(zacc_for_id, zacc)
                     if(DFD):
-                        xacc_for_id = numpy.append(xacc_for_id, xacc)
-                        yacc_for_id = numpy.append(yacc_for_id, yacc)
-                        zacc_for_id = numpy.append(zacc_for_id, zacc)
+                        xDFDacc_for_id = numpy.append(xDFDacc_for_id, xDFDacc)
+                        yDFDacc_for_id = numpy.append(yDFDacc_for_id, yDFDacc)
+                        zDFDacc_for_id = numpy.append(zDFDacc_for_id, zDFDacc)
             except ValueError:
                 aa=1            
     
@@ -2897,10 +3091,15 @@ def convert_details_to_hdf5(basePath,DFD=0,KIN=0):
        hf.create_dataset('xvel', data=xvel_for_id)
        hf.create_dataset('yvel', data=yvel_for_id)
        hf.create_dataset('zvel', data=zvel_for_id)
+       hf.create_dataset('xacc', data=xacc_for_id)
+       hf.create_dataset('yacc', data=yacc_for_id)
+       hf.create_dataset('zacc', data=zacc_for_id)
        if(DFD):
-           hf.create_dataset('xacc', data=xacc_for_id)
-           hf.create_dataset('yacc', data=yacc_for_id)
-           hf.create_dataset('zacc', data=zacc_for_id)
+            hf.create_dataset('xDFDacc', data=xDFDacc_for_id)
+            hf.create_dataset('yDFDacc', data=yDFDacc_for_id)
+            hf.create_dataset('zDFDacc', data=zDFDacc_for_id)
+            
+
     hf.close()
     
 

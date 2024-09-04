@@ -1,3 +1,13 @@
+from scipy.integrate import quad
+import numpy as np
+import arepo_package
+
+#header=arepo_package.load_snapshot_header(basePath, desired_redshift=10)
+
+omm = 0.3089
+oml = 0.6911
+omk = 0
+
 def DC(z0, z1):
     # Comoving distance in Mpc                                                                                          $
     def integrand(z):
