@@ -674,9 +674,9 @@ def get_dark_matter_correlation_function_zoom(output_path,input_redshift,NBINS, 
 
 
 
-def get_group_lengths_offsets(output_path,p_type,desired_redshift,maximum_index,file_format='fof_subfind'):
+def get_group_lengths_offsets(output_path,p_type,desired_redshift,maximum_index,file_format='fof_subfind',postprocessed=0):
     output_redshift,output_snapshot=desired_redshift_to_output_redshift(output_path,desired_redshift,list_all=False)
-    group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,file_format = file_format,list_all=False))
+    group_lengths,output_redshift=(get_group_property(output_path,'GroupLenType', desired_redshift,file_format = file_format,list_all=False,postprocessed=postprocessed))
     group_lengths=group_lengths[:,p_type] 
     group_offsets=numpy.array([sum(group_lengths[0:i]) for i in range(0,maximum_index+1)])
     return group_lengths[0:maximum_index+1],group_offsets,output_redshift
