@@ -1036,6 +1036,7 @@ def get_seeding_events(output_path):
     FOFDMmass_complete=numpy.array([])
     indexmaxdens_complete=numpy.array([],dtype=int)
     FOFTask_complete=numpy.array([],dtype=int)
+    DrawnSeedMass_complete=numpy.array([])
     #Gas_Hsml_complete=numpy.array([])
     #BH_Hsml_complete=numpy.array([])
     #BH_mass2_complete=numpy.array([])
@@ -1057,6 +1058,7 @@ def get_seeding_events(output_path):
                 FOFDMmass=numpy.array([data[6]])
                 indexmaxdens=numpy.array([data[7].astype(int)])
                 FOFTask=numpy.array([data[8].astype(int)])
+                DrawnSeedMass=numpy.array([data[10]])
 
             else:    
                 file_id=data[:,0].astype(int)
@@ -1068,6 +1070,7 @@ def get_seeding_events(output_path):
                 FOFDMmass=data[:,6]
                 indexmaxdens=data[:,7].astype(int)
                 FOFTask=data[:,8].astype(int)
+                DrawnSeedMass=numpy.array([data[:,10]])
               
             #print(
 
@@ -1081,6 +1084,7 @@ def get_seeding_events(output_path):
             FOFDMmass_complete=numpy.append(FOFDMmass_complete,FOFDMmass)
             indexmaxdens_complete=numpy.append(indexmaxdens_complete,indexmaxdens)
             FOFTask_complete=numpy.append(FOFTask_complete,FOFTask)
+            DrawnSeedMass_complete=numpy.append(DrawnSeedMass_complete,DrawnSeedMass)
             #Gas_Hsml_complete=numpy.append(Gas_Hsml_complete,Gas_Hsml)
             #BH_Hsml_complete=numpy.append(BH_Hsml_complete,BH_Hsml)
         except IndexError:
@@ -1088,7 +1092,7 @@ def get_seeding_events(output_path):
             aaa=1
            # print('Index err:', name)
     
-    return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,FOFTask_complete, file_id_complete,N_empty
+    return scale_fac_complete,BH_id_complete,density_complete,metallicity_complete,SFR_complete,FOFDMmass_complete,indexmaxdens_complete,FOFTask_complete, file_id_complete,N_empty,DrawnSeedMass_complete
 
 def get_seeding_events2(output_path):
 
@@ -1243,7 +1247,7 @@ def get_seeding_events3(output_path,GET_ENVIRONMENT=0):
 
 def get_seeding_events4(output_path,GET_ENVIRONMENT=0):
 
-    output_file_names=os.listdir(output_path+'blackhole_seeding2_backup/')
+    output_file_names=os.listdir(output_path+'blackhole_seeding2/')
     snapshot_space=[]
     redshift_space=[]
 
@@ -1266,7 +1270,7 @@ def get_seeding_events4(output_path,GET_ENVIRONMENT=0):
 
     for name in output_file_names[:]:
         #print(name)
-        data=numpy.loadtxt(output_path+'blackhole_seeding2_backup/'+name)
+        data=numpy.loadtxt(output_path+'blackhole_seeding2/'+name)
 
         try:
         #for ii in [1]:
@@ -3102,6 +3106,85 @@ def convert_details_to_hdf5(basePath,DFD=0,KIN=0):
 
     hf.close()
     
+    
+    
+def convert_details_to_hdf5_previous(basePath,DFD=0,KIN=0):
+    def parse_id_col(BH_ids_as_string):
+        return numpy.int(BH_ids_as_string[3:])
+    vec_parse_id_col=numpy.vectorize(parse_id_col)
+    output_file_names=os.listdir(basePath+'blackhole_details/')
+    BH_ids_for_id=numpy.array([],dtype=int)
+    scale_factors_for_id=numpy.array([])
+    BH_masses_for_id=numpy.array([])
+    BH_mdots_for_id=numpy.array([])
+    rhos_for_id=numpy.array([])
+    sound_speeds_for_id=numpy.array([])
+    if(KIN):
+        xpos_for_id = numpy.array([])
+        ypos_for_id = numpy.array([])
+        zpos_for_id = numpy.array([])
+        xvel_for_id = numpy.array([])
+        yvel_for_id = numpy.array([])
+        zvel_for_id = numpy.array([])
+
+
+        
+    ii=0
+    for output_file_name in output_file_names[:]:
+        if ('blackhole_details' in output_file_name):
+            print(ii)
+            ii+=1
+            try:
+                full_data=numpy.loadtxt(basePath+'blackhole_details/'+output_file_name,dtype='str')
+                BH_ids=vec_parse_id_col(full_data[:,0])
+                scale_factors=(full_data[:,1]).astype('float')
+                BH_masses=(full_data[:,2]).astype('float')
+                BH_mdots=(full_data[:,3]).astype('float')
+                rhos=(full_data[:,4]).astype('float')
+                sound_speeds=(full_data[:,5]).astype('float')
+                if(KIN):
+                    xpos=(full_data[:,6]).astype('float')
+                    ypos=(full_data[:,7]).astype('float')
+                    zpos=(full_data[:,8]).astype('float')
+
+                    xvel=(full_data[:,9]).astype('float')
+                    yvel=(full_data[:,10]).astype('float')
+                    zvel=(full_data[:,11]).astype('float')
+                    
+
+
+                BH_ids_for_id=numpy.append(BH_ids_for_id,BH_ids)
+                scale_factors_for_id=numpy.append(scale_factors_for_id,scale_factors)
+                BH_masses_for_id=numpy.append(BH_masses_for_id,BH_masses)
+                BH_mdots_for_id=numpy.append(BH_mdots_for_id,BH_mdots)
+                rhos_for_id=numpy.append(rhos_for_id,rhos)
+                sound_speeds_for_id=numpy.append(sound_speeds_for_id,sound_speeds)
+                if(KIN):
+                    xpos_for_id = numpy.append(xpos_for_id,xpos)
+                    ypos_for_id = numpy.append(ypos_for_id, ypos)
+                    zpos_for_id = numpy.append(zpos_for_id, zpos)
+                    xvel_for_id = numpy.append(xvel_for_id, xvel)
+                    yvel_for_id = numpy.append(yvel_for_id, yvel)
+                    zvel_for_id = numpy.append(zvel_for_id, zvel)
+            except ValueError:
+                aa=1            
+    
+    hf = h5py.File(basePath+'blackhole_details.hdf5','w')
+    hf.create_dataset('BH_ID',data=BH_ids_for_id)
+    hf.create_dataset('ScaleFactor',data=scale_factors_for_id)
+    
+    hf.create_dataset('BH_Mass',data=BH_masses_for_id)
+    hf.create_dataset('BH_Mdot',data=BH_mdots_for_id)
+    hf.create_dataset('Rho',data=rhos_for_id)
+    hf.create_dataset('cs',data=sound_speeds_for_id)
+    if(KIN):
+       hf.create_dataset('xpos',data=xpos_for_id)
+       hf.create_dataset('ypos',data=ypos_for_id)
+       hf.create_dataset('zpos', data=zpos_for_id)
+       hf.create_dataset('xvel', data=xvel_for_id)
+       hf.create_dataset('yvel', data=yvel_for_id)
+       hf.create_dataset('zvel', data=zvel_for_id)
+    hf.close()
 
 def get_blackhole_progenitors(basePath,blackhole_index,desired_redshift,redshift_step): 
     global N_mergers
